@@ -54,7 +54,7 @@ function speak(textToSpeak) {
 
 function fetchAIResponse(message) {
   text.textContent = "Stella is thinking...";
-  fetch("https://stella-1yyt.onrender.com", {
+  fetch("https://stella-5.onrender.com", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
