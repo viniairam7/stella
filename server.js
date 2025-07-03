@@ -10,17 +10,32 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-app.post('/api/chat', async (req, res) => {
-  const userMessage = req.body.message;
+const openai = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "https://stella-4.onrender.com", // apenas o domínio
+    "X-Title": "Stella"
+  }
+});
+
+app.post("/perguntar", async (req, res) => {
+  const { pergunta } = req.body;
 
   try {
-    const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+    const chatResponse = await openai.chat.completions.create({
       model: "openai/gpt-4o",
       messages: [
-        { role: "system", content: "Você é uma professora de inglês da Star Idiomas. Deve ouvir o usuário, ensinar a falar inglês corretamente e tirar dúvidas." },
-        { role: "user", content: userMessage }
-      ]
-    }, {
+        {
+          role: "system",
+          content:
+            "Você é uma professora de inglês da Star Idiomas. Deve ouvir o usuário, ensinar a falar inglês corretamente e tirar dúvidas."
+        },
+        { role: "user", content: pergunta }
+      ],
+      temperature: 0.7,
+      max_tokens: 600
+
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json"
