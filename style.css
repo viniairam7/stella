@@ -2,7 +2,7 @@ body {
   margin: 0;
   padding: 0;
   height: 100vh;
-  background: black; /* Fundo preto sólido para corresponder à imagem */
+  background: linear-gradient(to bottom, #0c0c2d, #470023);
   color: white;
   font-family: Arial, sans-serif;
   display: flex;
@@ -50,7 +50,7 @@ body {
 }
 
 .status {
-  font-size: 24px; /* Texto de status maior */
+  font-size: 18px; /* Texto de status maior */
   color: #ccc;
   background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente para o texto */
   padding: 10px 20px;
@@ -66,22 +66,20 @@ body {
 .fixed-footer {
   width: 100%;
   display: flex;
-  justify-content: space-around; /* Espaça os botões igualmente */
+  justify-content: space-around; /* Isso já distribui 3 botões bem */
   align-items: center;
   padding: 20px 0;
-  background: transparent; /* Fundo transparente, o efeito de blur virá do body */
-  position: sticky; /* ou 'fixed', dependendo do comportamento desejado */
+  background: transparent;
+  position: sticky; /* ou 'fixed' */
   bottom: 0;
   left: 0;
-  /* O efeito de desfoque na parte inferior da imagem parece ser do iOS,
-     mas podemos simular um pouco com um gradiente transparente se necessário */
 }
 
 .footer-button {
-  background-color: rgba(255, 255, 255, 0.2); /* Fundo semi-transparente para os botões */
+  background-color: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 50%;
-  width: 60px; /* Tamanho menor para os botões auxiliares */
+  width: 60px; /* Tamanho padrão para os botões auxiliares */
   height: 60px;
   display: flex;
   align-items: center;
@@ -105,8 +103,8 @@ body {
 .mic-button {
   width: 80px; /* Botão do microfone maior */
   height: 80px;
-  background-color: orange; /* Cor laranja do botão principal */
-  box-shadow: 0 0 20px rgba(255, 140, 0, 0.9), 0 0 40px rgba(255, 140, 0, 0.7); /* Efeito de brilho */
+  background-color: orange;
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.9), 0 0 40px rgba(255, 140, 0, 0.7);
 }
 
 .mic-button i {
@@ -115,7 +113,6 @@ body {
 
 /* Estilo específico para o botão de desligar */
 .end-call {
-  background-color: red; /* Cor vermelha para o botão de desligar */
+  background-color: red;
   box-shadow: 0 2px 10px rgba(255, 0, 0, 0.5);
 }
-
