@@ -14,7 +14,7 @@ if ('webkitSpeechRecognition' in window) {
 
   recognition.onstart = () => {
     speakIndicator.classList.add('speaking');
-    text.textContent = "I'm listening...";
+    text.textContent = "✨ Stella is listening...";
   };
 
   recognition.onresult = (event) => {
@@ -24,7 +24,7 @@ if ('webkitSpeechRecognition' in window) {
   };
 
   recognition.onerror = (event) => {
-    text.textContent = "Error: " + event.error;
+    text.textContent = "❌ Error: " + event.error;
   };
 
   recognition.onend = () => {
@@ -46,28 +46,42 @@ stopBtn.onclick = () => {
 };
 
 function speak(textToSpeak) {
+  if (!textToSpeak) return;
+
   const utter = new SpeechSynthesisUtterance(textToSpeak);
   utter.lang = 'en-US';
-  utter.voice = synth.getVoices().find(v => v.name.includes("Female") || v.name.includes("Samantha")) || null;
+
+  // Selecionar uma voz feminina se possível
+  const availableVoices = synth.getVoices();
+  const preferredVoice = availableVoices.find(voice => 
+    voice.name.includes("Female") || voice.name.includes("Samantha") || voice.name.includes("Google US English")
+  );
+
+  if (preferredVoice) {
+    utter.voice = preferredVoice;
+  }
+
+  synth.cancel(); // Para evitar sobreposição de vozes
   synth.speak(utter);
 }
 
 function fetchAIResponse(message) {
   text.textContent = "Stella is thinking...";
+  
   fetch("https://stella-7.onrender.com", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ message })
+    body: JSON.stringify({ pergunta: message })  // nome do campo deve ser "pergunta"
   })
     .then(res => res.json())
     .then(data => {
       const reply = data.reply || "Sorry, I didn’t get that.";
       text.textContent = "Stella: " + reply;
-      speak(reply);
+      speak(reply); // Stella fala aqui 🎤
     })
     .catch(err => {
-      text.textContent = "Error contacting Stella: " + err.message;
+      text.textContent = "❌ Error contacting Stella: " + err.message;
     });
 }
