@@ -1,50 +1,45 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { OpenAI } = require("openai");
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static("public"));
 
-// OpenRouter SDK
-const openai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
-  defaultHeaders: {
-    "HTTP-Referer": "https://stella-1yyt.onrender.com", // apenas o domínio
-    "X-Title": "Stella"
-  }
-});
+const PORT = process.env.PORT || 3000;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-app.post("/perguntar", async (req, res) => {
-  const { pergunta } = req.body;
+app.post('/api/chat', async (req, res) => {
+  const userMessage = req.body.message;
 
   try {
-    const chatResponse = await openai.chat.completions.create({
+    const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
       model: "openai/gpt-4o",
       messages: [
-        {
-          role: "system",
-          content:
-            "Você é uma professora de inglês da Star Idiomas. Deve ouvir o usuário, ensinar a falar inglês corretamente e tirar dúvidas."
-        },
-        { role: "user", content: pergunta }
-      ],
-      temperature: 0.7,
-      max_tokens: 600
+        { role: "system", content: "Você é uma professora de inglês da Star Idiomas. Deve ouvir o usuário, ensinar a falar inglês corretamente e tirar dúvidas." },
+        { role: "user", content: userMessage }
+      ]
+    }, {
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      }
     });
 
-    const respostaFinal = chatResponse.choices[0].message.content;
-    res.json({ resposta: respostaFinal });
+    const reply = response.data.choices[0].message.content;
+    res.json({ reply });
   } catch (err) {
-    console.error("Erro ao chamar OpenRouter:", err.response?.data || err.message);
-    res.status(500).json({ erro: "Erro ao buscar resposta da IA" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to get response from Stella." });
   }
 });
 
-const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`Stella backend running on port ${PORT}`);
+});
+
+            
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
 });
