@@ -70,14 +70,15 @@
 <body>
   <div id="star">⭐</div>
 
-  <div class="button-container">
-    <button class="glow-button" onclick="startRecording()">
-      <img src="mic-icon-black.png" alt="Start" />
-    </button>
-    <button class="glow-button" onclick="stopRecording()">
-      <img src="x-icon-black.png" alt="Stop" />
-    </button>
-  </div>
+ <div class="buttons">
+  <button id="start-button" class="glow-button">
+    <img src="mic.png" alt="Microphone" class="icon">
+  </button>
+  <button id="stop-button" class="glow-button">
+    <img src="cancel.png" alt="Stop" class="icon">
+  </button>
+</div>
+
 
   <div class="status" id="status">Waiting for input...</div>
 
