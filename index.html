@@ -2,19 +2,86 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Stella - English AI</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stella - by Star Idiomas</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(to bottom right, #0c0c2d, #230047);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      color: white;
+      text-align: center;
+    }
+
+    #star {
+      font-size: 100px;
+      color: yellow;
+      text-shadow: 0 0 20px yellow, 0 0 30px yellow;
+      margin-bottom: 30px;
+    }
+
+    .button-container {
+      display: flex;
+      gap: 40px;
+    }
+
+    .glow-button {
+      background-color: orange;
+      border: none;
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      box-shadow: 0 0 20px rgba(255, 140, 0, 0.9), 0 0 40px rgba(255, 140, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .glow-button:hover {
+      transform: scale(1.1);
+    }
+
+    .glow-button img {
+      width: 40px;
+      height: 40px;
+    }
+
+    .status {
+      margin-top: 30px;
+      font-size: 18px;
+      color: #ccc;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <div class="star speaking" id="speak-indicator"></div>
-    <p id="text">Touch to speak with Stella</p>
-    <div class="controls">
-      <button id="mic-btn">🎤</button>
-      <button id="stop-btn">❌</button>
-    </div>
+  <div id="star">⭐</div>
+
+  <div class="button-container">
+    <button class="glow-button" onclick="startRecording()">
+      <img src="mic_icon.png" alt="Start" />
+    </button>
+    <button class="glow-button" onclick="stopRecording()">
+      <img src="x_icon.png" alt="Stop" />
+    </button>
   </div>
-  <script src="script.js"></script>
+
+  <div class="status" id="status">Waiting for input...</div>
+
+  <script>
+    function startRecording() {
+      document.getElementById("status").textContent = "✨ Stella is listening...";
+    }
+
+    function stopRecording() {
+      document.getElementById("status").textContent = "❌ Stella has stopped.";
+    }
+  </script>
 </body>
 </html>
