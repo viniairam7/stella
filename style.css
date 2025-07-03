@@ -48,18 +48,18 @@ body {
   transform: scale(1.1);
 }
 
-.glow-button img { /* Se você planeja usar imagens dentro dos botões */
-  width: 30px;
-  height: 30px;
-}
-
-.status {
-  margin-top: 30px;
-  font-size: 18px;
-  color: #ccc;
+.glow-button i {
+  font-size: 2em; 
+  color: black; 
 }
 
 /* Adicionando a classe 'speaking' para a animação da estrela */
 #star.speaking {
     animation: pulse 1s infinite; /* A animação 'pulse' já está definida */
 }
+
+
+
+
+
+
