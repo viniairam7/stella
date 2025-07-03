@@ -85,77 +85,86 @@
 
   <div class="status" id="status">Waiting for input...</div>
 
+  
+
   <script>
-    let recognition;
-    const synth = window.speechSynthesis;
+  let recognition;
+  const synth = window.speechSynthesis; // ✅ declare synth aqui antes de usá-lo
 
-    if ('webkitSpeechRecognition' in window) {
-      recognition = new webkitSpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+  // Garante que as vozes estejam carregadas
+  window.speechSynthesis.onvoiceschanged = () => {
+    synth.getVoices();
+  };
 
-      recognition.onstart = function () {
-        document.getElementById("status").textContent = "✨ Stella is listening...";
-      };
+  if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
-      recognition.onresult = function (event) {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById("status").textContent = "🗣️ You said: " + transcript;
-        sendToStella(transcript);
-      };
+    recognition.onstart = function () {
+      document.getElementById("status").textContent = "✨ Stella is listening...";
+    };
 
-      recognition.onerror = function (event) {
-        document.getElementById("status").textContent = "❌ Error: " + event.error;
-      };
+    recognition.onresult = function (event) {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById("status").textContent = "🗣️ You said: " + transcript;
+      sendToStella(transcript);
+    };
 
-      recognition.onend = function () {
-        document.getElementById("status").textContent = "⏹️ Stella has stopped.";
-      };
-    } else {
-      alert("Speech recognition is not supported in this browser.");
-    }
+    recognition.onerror = function (event) {
+      document.getElementById("status").textContent = "❌ Error: " + event.error;
+    };
 
-    function startRecording() {
-      if (recognition) recognition.start();
-    }
+    recognition.onend = function () {
+      document.getElementById("status").textContent = "⏹️ Stella has stopped.";
+    };
+  } else {
+    alert("Speech recognition is not supported in this browser.");
+  }
 
-    function stopRecording() {
-      if (recognition) recognition.stop();
-    }
+  function startRecording() {
+    if (recognition) recognition.start();
+  }
 
-    function speak(textToSpeak) {
-      if (!textToSpeak) return;
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = 'en-US';
+  function stopRecording() {
+    if (recognition) recognition.stop();
+  }
 
-      const voices = synth.getVoices();
-      const preferred = voices.find(v => v.name.includes("Female") || v.name.includes("Samantha") || v.lang === 'en-US');
-      if (preferred) utterance.voice = preferred;
+  function speak(textToSpeak) {
+    if (!textToSpeak) return;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = 'en-US';
 
-      synth.cancel(); // Garante que não sobreponha
-      synth.speak(utterance);
-    }
+    const voices = synth.getVoices();
+    const preferred = voices.find(v =>
+      v.name.includes("Female") || v.name.includes("Samantha") || v.lang === 'en-US'
+    );
+    if (preferred) utterance.voice = preferred;
 
-    function sendToStella(pergunta) {
-      fetch("https://stella-7.onrender.com/perguntar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ pergunta })
-      })
-      .then((res) => res.json())
-      .then((data) => {
-        const resposta = data.reply || "Sorry, I didn’t understand.";
-        document.getElementById("status").textContent = "✨ Stella: " + resposta;
-        speak(resposta); // ✅ Fala a resposta
-      })
-      .catch((err) => {
-        console.error(err);
-        document.getElementById("status").textContent = "❌ Error contacting Stella.";
-      });
-    }
-  </script>
+    synth.cancel(); // Garante que não sobreponha
+    synth.speak(utterance);
+  }
+
+  function sendToStella(pergunta) {
+    fetch("https://stella-7.onrender.com/perguntar", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pergunta })
+    })
+    .then((res) => res.json())
+    .then((data) => {
+      const resposta = data.reply || "Sorry, I didn’t understand.";
+      document.getElementById("status").textContent = "✨ Stella: " + resposta;
+      speak(resposta); // ✅ Fala a resposta
+    })
+    .catch((err) => {
+      console.error(err);
+      document.getElementById("status").textContent = "❌ Error contacting Stella.";
+    });
+  }
+</script>
 </body>
 </html>
