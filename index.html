@@ -23,6 +23,13 @@
       color: yellow;
       text-shadow: 0 0 20px yellow, 0 0 30px yellow;
       margin-bottom: 30px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); text-shadow: 0 0 20px yellow, 0 0 30px yellow; }
+      50% { transform: scale(1.1); text-shadow: 0 0 30px yellow, 0 0 50px yellow; }
+      100% { transform: scale(1); text-shadow: 0 0 20px yellow, 0 0 30px yellow; }
     }
 
     .button-container {
@@ -49,8 +56,8 @@
     }
 
     .glow-button img {
-      width: 40px;
-      height: 40px;
+      width: 30px;
+      height: 30px;
     }
 
     .status {
@@ -65,22 +72,69 @@
 
   <div class="button-container">
     <button class="glow-button" onclick="startRecording()">
-      <img src="mic_icon.png" alt="Start" />
+      <img src="mic-icon-black.png" alt="Start" />
     </button>
     <button class="glow-button" onclick="stopRecording()">
-      <img src="x_icon.png" alt="Stop" />
+      <img src="x-icon-black.png" alt="Stop" />
     </button>
   </div>
 
   <div class="status" id="status">Waiting for input...</div>
 
   <script>
+    let recognition;
+
+    if ('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = function () {
+        document.getElementById("status").textContent = "✨ Stella is listening...";
+      };
+
+      recognition.onresult = function (event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("status").textContent = "You said: " + transcript;
+        sendToStella(transcript);
+      };
+
+      recognition.onerror = function (event) {
+        document.getElementById("status").textContent = "Error: " + event.error;
+      };
+
+      recognition.onend = function () {
+        document.getElementById("status").textContent = "❌ Stella has stopped.";
+      };
+    } else {
+      alert("Speech recognition is not supported in this browser.");
+    }
+
     function startRecording() {
-      document.getElementById("status").textContent = "✨ Stella is listening...";
+      if (recognition) recognition.start();
     }
 
     function stopRecording() {
-      document.getElementById("status").textContent = "❌ Stella has stopped.";
+      if (recognition) recognition.stop();
+    }
+
+    function sendToStella(pergunta) {
+      fetch("https://stella-7.onrender.com/perguntar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ pergunta })
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById("status").textContent = "✨ Stella: " + data.reply;
+        })
+        .catch((err) => {
+          console.error(err);
+          document.getElementById("status").textContent = "Error contacting Stella.";
+        });
     }
   </script>
 </body>
