@@ -71,100 +71,114 @@
   <div id="star">⭐</div>
 
   <div class="buttons">
-    <button id="start-button" class="glow-button" onclick="startRecording()">
+    <button id="start-button" class="glow-button">
       <img src="mic.png" alt="Microphone" class="icon">
     </button>
-    <button id="stop-button" class="glow-button" onclick="stopRecording()">
+    <button id="stop-button" class="glow-button">
       <img src="cancel.png" alt="Stop" class="icon">
     </button>
   </div>
 
   <button onclick="window.location.href='pratica.html'" class="glow-button">Praticar</button>
 
-
-
   <div class="status" id="status">Waiting for input...</div>
 
-  
-
   <script>
-  let recognition;
-  const synth = window.speechSynthesis; // ✅ declare synth aqui antes de usá-lo
+    const startBtn = document.getElementById("start-button");
+    const stopBtn = document.getElementById("stop-button");
+    const statusDiv = document.getElementById("status");
 
-  // Garante que as vozes estejam carregadas
-  window.speechSynthesis.onvoiceschanged = () => {
-    synth.getVoices();
-  };
+    let recognition;
+    const synth = window.speechSynthesis;
+    let selectedVoice = null;
 
-  if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    // ⚠️ Inicializa vozes após interação do usuário (necessário no iOS)
+    function initializeVoice() {
+      const voices = synth.getVoices();
+      selectedVoice = voices.find(v =>
+        v.name.includes("Samantha") || v.name.includes("Female") || v.name.includes("Google US English")
+      );
+    }
 
-    recognition.onstart = function () {
-      document.getElementById("status").textContent = "✨ Stella is listening...";
+    // Executar isso após toque do usuário
+    window.addEventListener('click', () => {
+      synth.getVoices(); // força carregar vozes no iOS
+      initializeVoice();
+    }, { once: true });
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      initializeVoice();
     };
 
-    recognition.onresult = function (event) {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById("status").textContent = "🗣️ You said: " + transcript;
-      sendToStella(transcript);
+    if ('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        statusDiv.textContent = "✨ Stella is listening...";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        statusDiv.textContent = "🗣️ You said: " + transcript;
+        sendToStella(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        statusDiv.textContent = "❌ Error: " + event.error;
+      };
+
+      recognition.onend = () => {
+        statusDiv.textContent = "⏹️ Wait...";
+      };
+    } else {
+      alert("Speech recognition is not supported in this browser.");
+    }
+
+    startBtn.onclick = () => {
+      if (recognition) recognition.start();
     };
 
-    recognition.onerror = function (event) {
-      document.getElementById("status").textContent = "❌ Error: " + event.error;
+    stopBtn.onclick = () => {
+      if (recognition) recognition.stop();
     };
 
-    recognition.onend = function () {
-      document.getElementById("status").textContent = "⏹️ Stella has stopped.";
-    };
-  } else {
-    alert("Speech recognition is not supported in this browser.");
-  }
+    function speak(textToSpeak) {
+      if (!textToSpeak) return;
 
-  function startRecording() {
-    if (recognition) recognition.start();
-  }
+      const utter = new SpeechSynthesisUtterance(textToSpeak);
+      utter.lang = 'en-US';
 
-  function stopRecording() {
-    if (recognition) recognition.stop();
-  }
+      if (selectedVoice) {
+        utter.voice = selectedVoice;
+      }
 
-  function speak(textToSpeak) {
-    if (!textToSpeak) return;
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = 'en-US';
+      synth.cancel(); // evita sobreposição
+      synth.speak(utter);
+    }
 
-    const voices = synth.getVoices();
-    const preferred = voices.find(v =>
-      v.name.includes("Female") || v.name.includes("Samantha") || v.lang === 'en-US'
-    );
-    if (preferred) utterance.voice = preferred;
-
-    synth.cancel(); // Garante que não sobreponha
-    synth.speak(utterance);
-  }
-
-  function sendToStella(pergunta) {
-    fetch("https://stella-7.onrender.com/perguntar", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ pergunta })
-    })
-    .then((res) => res.json())
-    .then((data) => {
-      const resposta = data.reply || "Sorry, I didn’t understand.";
-      document.getElementById("status").textContent = "✨ Stella: " + resposta;
-      speak(resposta); // ✅ Fala a resposta
-    })
-    .catch((err) => {
-      console.error(err);
-      document.getElementById("status").textContent = "❌ Error contacting Stella.";
-    });
-  }
-</script>
+    function sendToStella(pergunta) {
+      fetch("https://stella-7.onrender.com/perguntar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ pergunta })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const resposta = data.reply || "Sorry, I didn’t understand.";
+        statusDiv.textContent = "✨ Stella: " + resposta;
+        speak(resposta);
+      })
+      .catch(err => {
+        console.error(err);
+        statusDiv.textContent = "❌ Error contacting Stella.";
+      });
+    }
+  </script>
 </body>
 </html>
+
