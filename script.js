@@ -4,7 +4,18 @@ const speakIndicator = document.getElementById('speak-indicator');
 const text = document.getElementById('text');
 
 let recognition;
-let synth = window.speechSynthesis;
+const synth = window.speechSynthesis;
+
+// Garante que as vozes sejam carregadas no iOS
+window.speechSynthesis.onvoiceschanged = () => {
+  synth.getVoices();
+};
+
+function initializeVoice() {
+  const utter = new SpeechSynthesisUtterance("Initializing Stella's voice");
+  utter.lang = 'en-US';
+  synth.speak(utter);
+}
 
 if ('webkitSpeechRecognition' in window) {
   recognition = new webkitSpeechRecognition();
@@ -30,9 +41,12 @@ if ('webkitSpeechRecognition' in window) {
   recognition.onend = () => {
     speakIndicator.classList.remove('speaking');
   };
+} else {
+  alert("Speech recognition is not supported in this browser.");
 }
 
 micBtn.onclick = () => {
+  initializeVoice(); // ⚠️ essencial para funcionar no iOS
   if (recognition) {
     recognition.start();
   }
@@ -51,37 +65,35 @@ function speak(textToSpeak) {
   const utter = new SpeechSynthesisUtterance(textToSpeak);
   utter.lang = 'en-US';
 
-  // Selecionar uma voz feminina se possível
-  const availableVoices = synth.getVoices();
-  const preferredVoice = availableVoices.find(voice => 
-    voice.name.includes("Female") || voice.name.includes("Samantha") || voice.name.includes("Google US English")
+  const voices = synth.getVoices();
+  const preferredVoice = voices.find(voice =>
+    voice.name.includes("Female") || voice.name.includes("Samantha") || voice.name.includes("Google US English") || voice.lang === 'en-US'
   );
 
-  if (preferredVoice) {
-    utter.voice = preferredVoice;
-  }
+  if (preferredVoice) utter.voice = preferredVoice;
 
-  synth.cancel(); // Para evitar sobreposição de vozes
+  synth.cancel();
   synth.speak(utter);
 }
 
 function fetchAIResponse(message) {
   text.textContent = "Stella is thinking...";
-  
+
   fetch("https://stella-7.onrender.com", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ pergunta: message })  // nome do campo deve ser "pergunta"
+    body: JSON.stringify({ pergunta: message })
   })
     .then(res => res.json())
     .then(data => {
       const reply = data.reply || "Sorry, I didn’t get that.";
       text.textContent = "Stella: " + reply;
-      speak(reply); // Stella fala aqui 🎤
+      speak(reply);
     })
     .catch(err => {
       text.textContent = "❌ Error contacting Stella: " + err.message;
     });
 }
+
