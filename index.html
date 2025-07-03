@@ -32,7 +32,7 @@
       100% { transform: scale(1); text-shadow: 0 0 20px yellow, 0 0 30px yellow; }
     }
 
-    .button-container {
+    .buttons {
       display: flex;
       gap: 40px;
     }
@@ -70,20 +70,20 @@
 <body>
   <div id="star">⭐</div>
 
- <div class="buttons">
-  <button id="start-button" class="glow-button">
-    <img src="mic.png" alt="Microphone" class="icon">
-  </button>
-  <button id="stop-button" class="glow-button">
-    <img src="cancel.png" alt="Stop" class="icon">
-  </button>
-</div>
-
+  <div class="buttons">
+    <button id="start-button" class="glow-button" onclick="startRecording()">
+      <img src="mic.png" alt="Microphone" class="icon">
+    </button>
+    <button id="stop-button" class="glow-button" onclick="stopRecording()">
+      <img src="cancel.png" alt="Stop" class="icon">
+    </button>
+  </div>
 
   <div class="status" id="status">Waiting for input...</div>
 
   <script>
     let recognition;
+    const synth = window.speechSynthesis;
 
     if ('webkitSpeechRecognition' in window) {
       recognition = new webkitSpeechRecognition();
@@ -97,16 +97,16 @@
 
       recognition.onresult = function (event) {
         const transcript = event.results[0][0].transcript;
-        document.getElementById("status").textContent = "You said: " + transcript;
+        document.getElementById("status").textContent = "🗣️ You said: " + transcript;
         sendToStella(transcript);
       };
 
       recognition.onerror = function (event) {
-        document.getElementById("status").textContent = "Error: " + event.error;
+        document.getElementById("status").textContent = "❌ Error: " + event.error;
       };
 
       recognition.onend = function () {
-        document.getElementById("status").textContent = "❌ Stella has stopped.";
+        document.getElementById("status").textContent = "⏹️ Stella has stopped.";
       };
     } else {
       alert("Speech recognition is not supported in this browser.");
@@ -120,6 +120,19 @@
       if (recognition) recognition.stop();
     }
 
+    function speak(textToSpeak) {
+      if (!textToSpeak) return;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'en-US';
+
+      const voices = synth.getVoices();
+      const preferred = voices.find(v => v.name.includes("Female") || v.name.includes("Samantha") || v.lang === 'en-US');
+      if (preferred) utterance.voice = preferred;
+
+      synth.cancel(); // Garante que não sobreponha
+      synth.speak(utterance);
+    }
+
     function sendToStella(pergunta) {
       fetch("https://stella-7.onrender.com/perguntar", {
         method: "POST",
@@ -128,14 +141,16 @@
         },
         body: JSON.stringify({ pergunta })
       })
-        .then((res) => res.json())
-        .then((data) => {
-          document.getElementById("status").textContent = "✨ Stella: " + data.reply;
-        })
-        .catch((err) => {
-          console.error(err);
-          document.getElementById("status").textContent = "Error contacting Stella.";
-        });
+      .then((res) => res.json())
+      .then((data) => {
+        const resposta = data.reply || "Sorry, I didn’t understand.";
+        document.getElementById("status").textContent = "✨ Stella: " + resposta;
+        speak(resposta); // ✅ Fala a resposta
+      })
+      .catch((err) => {
+        console.error(err);
+        document.getElementById("status").textContent = "❌ Error contacting Stella.";
+      });
     }
   </script>
 </body>
