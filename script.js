@@ -1,29 +1,53 @@
 const startBtn = document.getElementById("start-button");
-const stopBtn = document.getElementById("stop-button");
-const statusDiv = document.getElementById("status"); // Elemento para exibir o status/texto
-const starElement = document.getElementById("star"); // O elemento da estrela para animação
+const stopBtn = document.getElementById("stop-button"); // Este botão não está mais no HTML, mas a variável pode ser mantida ou removida se não for usada em outro lugar.
+const statusDiv = document.getElementById("status");
+const starElement = document.getElementById("star");
+
+// Novos elementos para os botões do rodapé
+const attachPhotoButton = document.getElementById("attach-photo-button");
+const endCallButton = document.getElementById("end-call-button");
+const fileUpload = document.getElementById("file-upload"); // O input de arquivo escondido
 
 let recognition;
 const synth = window.speechSynthesis;
 let selectedVoice = null;
-let voicesLoaded = false; // Flag para controlar se as vozes foram carregadas
-let firstMicClick = true; // Flag para controlar o primeiro clique no botão do microfone
+let voicesLoaded = false;
+let firstMicClick = true;
 
 // Função para carregar e selecionar a voz
 function loadAndSelectVoice() {
   const voices = synth.getVoices();
   if (voices.length > 0) {
-    selectedVoice = voices.find(v =>
-      v.name.includes("Samantha") || v.name.includes("Female") || v.name.includes("Google US English") || v.lang === 'en-US'
-    );
+    console.log("Vozes disponíveis:");
+    voices.forEach((voice, index) => {
+      console.log(`${index}: ${voice.name} (${voice.lang}) - Default: ${voice.default}`);
+    });
+
+    // Prioriza a voz "Alex" se disponível (boa qualidade no iOS)
+    selectedVoice = voices.find(voice => voice.name === "Alex" && voice.lang === 'en-US');
+
+    // Se "Alex" não for encontrada, tenta "Google US English" (boa no Chrome/Android)
     if (!selectedVoice) {
-        selectedVoice = voices.find(v => v.lang === 'en-US'); // Fallback para qualquer voz em inglês
+      selectedVoice = voices.find(v => v.name.includes("Google US English"));
     }
+
+    // Se nenhuma das anteriores, tenta outras vozes femininas em inglês
     if (!selectedVoice) {
-        selectedVoice = voices[0]; // Último fallback para a primeira voz disponível
+      selectedVoice = voices.find(v => (v.name.includes("Samantha") || v.name.includes("Female")) && v.lang.startsWith('en'));
     }
+
+    // Fallback para qualquer voz em inglês
+    if (!selectedVoice) {
+        selectedVoice = voices.find(v => v.lang === 'en-US');
+    }
+
+    // Último fallback para a primeira voz disponível
+    if (!selectedVoice) {
+        selectedVoice = voices?.[0];
+    }
+
     voicesLoaded = true;
-    console.log("Voz selecionada:", selectedVoice ? selectedVoice.name : "Nenhuma voz em inglês encontrada, usando a primeira disponível.");
+    console.log("Voz selecionada:", selectedVoice ? selectedVoice.name : "Nenhuma voz preferida encontrada, usando fallback.");
   } else {
     console.warn("Nenhuma voz disponível ainda. Tentando novamente...");
   }
@@ -31,12 +55,12 @@ function loadAndSelectVoice() {
 
 // CRÍTICO PARA IOS: Força o carregamento das vozes no primeiro toque do usuário na página
 window.addEventListener('click', () => {
-  if (!voicesLoaded) { // Só carrega se ainda não tiver carregado
-    synth.getVoices(); // Força o carregamento das vozes no iOS
-    loadAndSelectVoice(); // Tenta carregar e selecionar a voz
+  if (!voicesLoaded) {
+    synth.getVoices();
+    loadAndSelectVoice();
     console.log("Vozes carregadas ou tentativa de carregamento acionada por clique inicial na página.");
   }
-}, { once: true }); // Executa apenas uma vez
+}, { once: true });
 
 // Tenta carregar as vozes quando elas mudam (pode não disparar sem interação no iOS inicialmente)
 window.speechSynthesis.onvoiceschanged = () => {
@@ -45,24 +69,23 @@ window.speechSynthesis.onvoiceschanged = () => {
   }
 };
 
-
 // Inicialização do webkitSpeechRecognition
 if ('webkitSpeechRecognition' in window) {
   recognition = new webkitSpeechRecognition();
   recognition.lang = 'en-US';
-  recognition.continuous = false; // Define como false para parar após uma frase
-  recognition.interimResults = false; // Não retorna resultados intermediários
+  recognition.continuous = false;
+  recognition.interimResults = false;
 
   recognition.onstart = () => {
     statusDiv.textContent = "✨ Stella is listening...";
-    starElement.classList.add('speaking'); // Adiciona a classe para animar a estrela
+    starElement.classList.add('speaking');
     console.log("Reconhecimento de voz iniciado.");
   };
 
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
     statusDiv.textContent = "🗣️ You said: " + transcript;
-    starElement.classList.remove('speaking'); // Remove a animação após o resultado
+    starElement.classList.remove('speaking');
     console.log("Você disse:", transcript);
     sendToStella(transcript);
   };
@@ -70,15 +93,15 @@ if ('webkitSpeechRecognition' in window) {
   recognition.onerror = (event) => {
     statusDiv.textContent = "❌ Error: " + event.error + ". Please try again.";
     console.error("Speech Recognition Error:", event.error);
-    starElement.classList.remove('speaking'); // Remove a animação em caso de erro
+    starElement.classList.remove('speaking');
     if (event.error === 'not-allowed') {
-      alert("Microphone access denied. Please allow microphone permissions in your browser settings.");
+      alert('Permissão de microfone negada. Por favor, verifique as configurações do seu navegador.');
     }
   };
 
   recognition.onend = () => {
-    statusDiv.textContent = "⏹️ Touch to speak again!"; // Mensagem clara para o usuário
-    starElement.classList.remove('speaking'); // Remove a animação quando a gravação termina
+    statusDiv.textContent = "⏹️ Wait the aswer. Touch again to talk!";
+    starElement.classList.remove('speaking');
     console.log("Reconhecimento de voz encerrado.");
   };
 } else {
@@ -90,13 +113,11 @@ if ('webkitSpeechRecognition' in window) {
 startBtn.onclick = () => {
   console.log("Botão de microfone clicado.");
 
-  // Garante que a voz seja carregada antes de iniciar, crucial para iOS
   if (!voicesLoaded) {
-      loadAndSelectVoice(); // Tenta carregar a voz
+      loadAndSelectVoice();
       if (!selectedVoice) {
           statusDiv.textContent = "Please wait, loading Stella's voice...";
           console.warn("Voz ainda não carregada.");
-          // Se a voz ainda não carregou, o reconhecimento de voz ainda pode tentar iniciar.
           if (recognition) {
               try {
                   recognition.start();
@@ -105,15 +126,13 @@ startBtn.onclick = () => {
                   statusDiv.textContent = "❌ Error starting microphone. Check permissions.";
               }
           }
-          return; // Sai da função para evitar chamar start() duas vezes ou sem voz.
+          return;
       }
   }
 
-  // Se é o primeiro clique no microfone E as vozes estão carregadas, faça a Stella dizer "Hello!"
   if (firstMicClick && selectedVoice) {
       speak("Hello! How can I help you?");
-      firstMicClick = false; // Desativa a flag para não falar novamente na próxima vez
-      // Dê um pequeno atraso antes de iniciar o reconhecimento para a fala inicial completar
+      firstMicClick = false;
       setTimeout(() => {
           if (recognition) {
               try {
@@ -123,9 +142,8 @@ startBtn.onclick = () => {
                   statusDiv.textContent = "❌ Error starting microphone. Check permissions.";
               }
           }
-      }, 1000); // Ajuste o atraso se necessário
+      }, 1000);
   } else {
-      // Para cliques subsequentes ou se a voz ainda não carregou (mas o reconhecimento pode tentar)
       if (recognition) {
           try {
               recognition.start();
@@ -139,13 +157,23 @@ startBtn.onclick = () => {
   }
 };
 
-// Evento de clique do botão de parar
-stopBtn.onclick = () => {
+// Evento de clique do botão de parar (stopBtn não está mais no HTML, mas a função speak ainda usa synth.cancel)
+// Se você quiser um botão de pausa real, precisaria reintroduzi-lo no HTML.
+// Por enquanto, o botão 'X' (endCallButton) pode ser usado para parar a sessão.
+
+// Evento de clique do botão de encerrar (X)
+endCallButton.onclick = () => {
+  console.log("Botão de encerrar clicado.");
   if (recognition) {
-    recognition.stop();
-    console.log("Reconhecimento de voz parado manualmente.");
+    recognition.stop(); // Para o reconhecimento de voz
   }
+  synth.cancel(); // Para qualquer fala em andamento
+  statusDiv.textContent = "Session ended. Touch to talk!";
+  starElement.classList.remove('speaking'); // Garante que a animação pare
+  firstMicClick = true; // Opcional: Reseta para que "Hello!" seja dito novamente na próxima sessão
+  // Você pode adicionar aqui qualquer outra lógica para "encerrar a chamada"
 };
+
 
 // Função para a Stella falar
 function speak(textToSpeak) {
@@ -155,7 +183,7 @@ function speak(textToSpeak) {
   }
   if (!selectedVoice) {
     console.warn("Voz não selecionada para falar. Tentando carregar novamente.");
-    loadAndSelectVoice(); // Tenta carregar novamente
+    loadAndSelectVoice();
     statusDiv.textContent = "Loading voice, please try again soon.";
     return;
   }
@@ -165,22 +193,22 @@ function speak(textToSpeak) {
   utter.voice = selectedVoice;
 
   utter.onstart = () => {
-      starElement.classList.add('speaking'); // Anima a estrela quando Stella está falando
+      starElement.classList.add('speaking');
       console.log("Stella começou a falar.");
   };
 
   utter.onend = () => {
-      starElement.classList.remove('speaking'); // Remove a animação quando Stella termina de falar
+      starElement.classList.remove('speaking');
       console.log("Stella terminou de falar.");
   };
 
   utter.onerror = (event) => {
       console.error("Speech Synthesis Error:", event.error);
-      starElement.classList.remove('speaking'); // Remove a animação em caso de erro
+      starElement.classList.remove('speaking');
       statusDiv.textContent = "❌ Stella couldn't speak. Error: " + event.error;
   };
 
-  synth.cancel(); // Cancela qualquer fala anterior para evitar sobreposição
+  synth.cancel();
   try {
       synth.speak(utter);
   } catch (e) {
@@ -201,7 +229,6 @@ function sendToStella(pergunta) {
   })
   .then(res => {
     if (!res.ok) {
-        // Se a resposta não for 2xx, lance um erro para o .catch
         return res.json().then(errorData => {
             throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
         });
@@ -220,6 +247,70 @@ function sendToStella(pergunta) {
   });
 }
 
-// Inicializa o carregamento da voz ao carregar a página para navegadores que suportam
-// (mas a interação do usuário ainda é chave para iOS).
+// Lógica para o botão de anexar foto para tradução
+attachPhotoButton.onclick = () => {
+  fileUpload.click(); // Simula um clique no input de arquivo escondido
+};
+
+fileUpload.onchange = () => {
+  const file = fileUpload.files?.[0];
+  if (file) {
+    if (!file.type.startsWith('image/')) {
+      statusDiv.textContent = "🚫 Por favor, selecione um arquivo de imagem.";
+      alert("Por favor, selecione um arquivo de imagem (JPEG, PNG, GIF, etc.).");
+      return;
+    }
+
+    statusDiv.textContent = "⏳ Carregando imagem para tradução...";
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const imageDataUrl = event.target?.result; // Conteúdo da imagem em Base64
+      if (imageDataUrl) {
+        // Envie o Base64 da imagem para o seu backend
+        sendImageForTranslation(imageDataUrl, file.name);
+      } else {
+        statusDiv.textContent = "❌ Falha ao ler a imagem.";
+      }
+    };
+    reader.onerror = function() {
+      statusDiv.textContent = "❌ Erro ao ler a imagem.";
+    };
+    reader.readAsDataURL(file); // Lê o arquivo como Data URL (Base64)
+  } else {
+    statusDiv.textContent = "🚫 Nenhuma imagem selecionada.";
+  }
+};
+
+function sendImageForTranslation(imageDataUrl, fileName) {
+  statusDiv.textContent = "📡 Enviando imagem para tradução...";
+  // IMPORTANTE: Substitua 'YOUR_BACKEND_TRANSLATION_ENDPOINT' pela URL real do seu backend
+  // que irá processar a imagem e enviá-la para um serviço de tradução de imagem/OCR.
+  fetch("YOUR_BACKEND_TRANSLATION_ENDPOINT", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ imageData: imageDataUrl, name: fileName })
+  })
+  .then(res => {
+    if (!res.ok) {
+        return res.json().then(errorData => {
+            throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+        });
+    }
+    return res.json();
+  })
+  .then(data => {
+    const translationResult = data.translationResult || "No translation found.";
+    statusDiv.textContent = "✅ Tradução concluída: " + translationResult;
+    speak(translationResult); // Stella pode falar a tradução
+  })
+  .catch(err => {
+    console.error("Erro ao enviar imagem para tradução:", err);
+    statusDiv.textContent = "❌ Erro ao traduzir imagem: " + err.message;
+    speak("I'm sorry, I couldn't translate the image at the moment.");
+  });
+}
+
+// Inicializa o carregamento da voz ao carregar a página
 loadAndSelectVoice();
