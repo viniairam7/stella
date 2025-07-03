@@ -20,7 +20,7 @@ if ('webkitSpeechRecognition' in window) {
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
     text.textContent = "You said: " + transcript;
-    replyAsStella(transcript);
+    fetchAIResponse(transcript);
   };
 
   recognition.onerror = (event) => {
@@ -45,18 +45,29 @@ stopBtn.onclick = () => {
   }
 };
 
-function replyAsStella(input) {
-  let response = "Can you repeat that, please?";
-  if (input.toLowerCase().includes("hello")) {
-    response = "Hello! How are you today?";
-  } else if (input.toLowerCase().includes("how do you say")) {
-    response = "Let me help you translate that.";
-  } else if (input.toLowerCase().includes("thank you")) {
-    response = "You're welcome! That's very polite.";
-  }
-
-  const utter = new SpeechSynthesisUtterance(response);
+function speak(textToSpeak) {
+  const utter = new SpeechSynthesisUtterance(textToSpeak);
   utter.lang = 'en-US';
   utter.voice = synth.getVoices().find(v => v.name.includes("Female") || v.name.includes("Samantha")) || null;
   synth.speak(utter);
+}
+
+function fetchAIResponse(message) {
+  text.textContent = "Stella is thinking...";
+  fetch("https://your-render-backend.onrender.com/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ message })
+  })
+    .then(res => res.json())
+    .then(data => {
+      const reply = data.reply || "Sorry, I didn’t get that.";
+      text.textContent = "Stella: " + reply;
+      speak(reply);
+    })
+    .catch(err => {
+      text.textContent = "Error contacting Stella: " + err.message;
+    });
 }
