@@ -59,22 +59,42 @@ stopBtn.onclick = () => {
   }
 };
 
+let selectedVoice = null;
+
+function loadVoices() {
+  const voices = synth.getVoices();
+  if (!voices.length) return;
+
+  selectedVoice = voices.find(voice =>
+    voice.name.includes("Samantha") ||
+    voice.lang === "en-US"
+  ) || voices[0]; // fallback para primeira voz disponível
+}
+
+// Garante que as vozes sejam carregadas corretamente
+window.speechSynthesis.onvoiceschanged = () => {
+  loadVoices();
+};
+
+// Também tenta carregar as vozes após o primeiro clique
+window.addEventListener("click", () => {
+  loadVoices();
+}, { once: true });
+
 function speak(textToSpeak) {
-  if (!textToSpeak) return;
+  if (!textToSpeak || !selectedVoice) {
+    console.warn("Voz não carregada ainda");
+    return;
+  }
 
   const utter = new SpeechSynthesisUtterance(textToSpeak);
+  utter.voice = selectedVoice;
   utter.lang = 'en-US';
-
-  const voices = synth.getVoices();
-  const preferredVoice = voices.find(voice =>
-    voice.name.includes("Female") || voice.name.includes("Samantha") || voice.name.includes("Google US English") || voice.lang === 'en-US'
-  );
-
-  if (preferredVoice) utter.voice = preferredVoice;
 
   synth.cancel();
   synth.speak(utter);
 }
+
 
 function fetchAIResponse(message) {
   text.textContent = "Stella is thinking...";
