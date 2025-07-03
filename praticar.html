@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stella - Prática</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(to bottom right, #0c0c2d, #230047);
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+    }
+
+    #chat {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 12px;
+      border-radius: 15px;
+      margin: 10px 0;
+      line-height: 1.5;
+    }
+
+    .user {
+      background: #7b1fa2;
+      align-self: flex-end;
+      text-align: right;
+    }
+
+    .ai {
+      background: #4a148c;
+      align-self: flex-start;
+    }
+
+    #input-container {
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    #userInput {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background-color: #1e1e2f;
+      color: white;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat"></div>
+  <div id="input-container">
+    <input id="userInput" placeholder="Digite sua resposta aqui..." autofocus />
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('userInput');
+
+    input.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter" && input.value.trim()) {
+        const userMessage = input.value.trim();
+        addMessage(userMessage, 'user');
+        input.value = "";
+        const response = await getAIResponse(userMessage);
+        addMessage(response, 'ai');
+      }
+    });
+
+    function addMessage(text, role) {
+      const msg = document.createElement("div");
+      msg.className = `message ${role}`;
+      msg.textContent = text;
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function getAIResponse(message) {
+      try {
+        const res = await fetch("https://stella-7.onrender.com/perguntar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pergunta: message })
+        });
+        const data = await res.json();
+        return data.reply || "Desculpe, não consegui entender.";
+      } catch (err) {
+        return "Erro ao se comunicar com a Stella.";
+      }
+    }
+  </script>
+</body>
+</html>
