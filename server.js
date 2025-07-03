@@ -13,7 +13,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
   defaultHeaders: {
-    "HTTP-Referer": "https://stella-5.onrender.com", // apenas o domínio
+    "HTTP-Referer": "https://stella-7.onrender.com", // apenas o domínio
     "X-Title": "Stella"
   }
 });
