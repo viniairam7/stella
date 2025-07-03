@@ -1,65 +1,121 @@
 body {
   margin: 0;
+  padding: 0;
   height: 100vh;
-  background: linear-gradient(to bottom right, #0c0c2d, #230047);
+  background: black; /* Fundo preto sólido para corresponder à imagem */
+  color: white;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column; /* Colunas para o layout principal */
+  align-items: center;
+  justify-content: space-between; /* Espaça o conteúdo e o rodapé */
+  text-align: center;
+}
+
+.content-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: Arial, sans-serif;
-  color: white;
-  text-align: center;
+  flex-grow: 1; /* Faz este wrapper ocupar o espaço restante */
+  width: 100%;
 }
 
-#star { /* Mantendo o ID para a estrela */
-  font-size: 100px;
+#app-title {
+  font-family: 'Handlee', cursive; /* Sugestão de fonte. Você precisará importar de Google Fonts se quiser. */
+  font-size: 50px; /* Tamanho do título "Stella" */
+  color: yellow; /* Cor do título */
+  margin-top: 20px; /* Espaço do topo */
+  text-shadow: 0 0 10px rgba(255, 255, 0, 0.5); /* Sombra suave para o texto */
+}
+
+#star {
+  font-size: 150px; /* Estrela maior */
   color: yellow;
-  text-shadow: 0 0 20px yellow, 0 0 30px yellow;
-  margin-bottom: 30px;
-  animation: pulse 2s infinite;
+  text-shadow: 0 0 30px yellow, 0 0 50px yellow; /* Efeito de brilho mais forte */
+  margin-top: 50px; /* Espaço abaixo do título */
+  margin-bottom: 20px; /* Espaço acima do status */
+  animation: none; /* Remove a animação padrão, usaremos a classe 'speaking' */
+}
+
+/* Animação da estrela quando Stella está falando */
+#star.speaking {
+  animation: pulse 1s infinite;
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); text-shadow: 0 0 20px yellow, 0 0 30px yellow; }
-  50% { transform: scale(1.1); text-shadow: 0 0 30px yellow, 0 0 50px yellow; }
-  100% { transform: scale(1); text-shadow: 0 0 20px yellow, 0 0 30px yellow; }
+  0% { transform: scale(1); text-shadow: 0 0 30px yellow, 0 0 50px yellow; }
+  50% { transform: scale(1.1); text-shadow: 0 0 40px yellow, 0 0 60px yellow; }
+  100% { transform: scale(1); text-shadow: 0 0 30px yellow, 0 0 50px yellow; }
 }
 
-.buttons {
+.status {
+  font-size: 24px; /* Texto de status maior */
+  color: #ccc;
+  background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente para o texto */
+  padding: 10px 20px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px); /* Efeito de desfoque no fundo do texto, como na imagem */
+  -webkit-backdrop-filter: blur(5px); /* Para compatibilidade com Safari */
+  margin-top: auto; /* Empurra para baixo dentro do content-wrapper */
+  margin-bottom: 80px; /* Espaço antes do rodapé, se o content-wrapper for flex-grow */
+  max-width: 80%; /* Limita a largura do balão de texto */
+  text-align: center;
+}
+
+.fixed-footer {
+  width: 100%;
   display: flex;
-  gap: 40px;
+  justify-content: space-around; /* Espaça os botões igualmente */
+  align-items: center;
+  padding: 20px 0;
+  background: transparent; /* Fundo transparente, o efeito de blur virá do body */
+  position: sticky; /* ou 'fixed', dependendo do comportamento desejado */
+  bottom: 0;
+  left: 0;
+  /* O efeito de desfoque na parte inferior da imagem parece ser do iOS,
+     mas podemos simular um pouco com um gradiente transparente se necessário */
 }
 
-.glow-button {
-  background-color: orange;
+.footer-button {
+  background-color: rgba(255, 255, 255, 0.2); /* Fundo semi-transparente para os botões */
   border: none;
   border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  box-shadow: 0 0 20px rgba(255, 140, 0, 0.9), 0 0 40px rgba(255, 140, 0, 0.7);
+  width: 60px; /* Tamanho menor para os botões auxiliares */
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: background-color 0.2s, transform 0.2s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-.glow-button:hover {
-  transform: scale(1.1);
+.footer-button:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
 }
 
-.glow-button i {
-  font-size: 2em; 
-  color: black; 
+.footer-button i {
+  font-size: 1.5em; /* Tamanho do ícone nos botões menores */
+  color: white;
 }
 
-/* Adicionando a classe 'speaking' para a animação da estrela */
-#star.speaking {
-    animation: pulse 1s infinite; /* A animação 'pulse' já está definida */
+/* Estilo específico para o botão do microfone (botão do meio) */
+.mic-button {
+  width: 80px; /* Botão do microfone maior */
+  height: 80px;
+  background-color: orange; /* Cor laranja do botão principal */
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.9), 0 0 40px rgba(255, 140, 0, 0.7); /* Efeito de brilho */
 }
 
+.mic-button i {
+    font-size: 2em; /* Ícone do microfone maior */
+}
 
-
-
-
+/* Estilo específico para o botão de desligar */
+.end-call {
+  background-color: red; /* Cor vermelha para o botão de desligar */
+  box-shadow: 0 2px 10px rgba(255, 0, 0, 0.5);
+}
 
