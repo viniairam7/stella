@@ -9,13 +9,20 @@
 </head>
 <body>
   <div class="content-wrapper">
-    <div id="app-title">Stella</div> <div id="star">⭐</div>
+    <div id="app-title">Stella</div>
+    <div id="star">⭐</div>
     <div class="status" id="status">Touch for Talk!</div>
   </div>
 
-  <div class="fixed-footer"> <button id="camera-button" class="footer-button"><i class="fas fa-video"></i></button> <button id="share-button" class="footer-button"><i class="fas fa-arrow-up-from-bracket"></i></button> <button id="start-button" class="footer-button mic-button"><i class="fas fa-microphone"></i></button>
-    <button id="stop-button" class="footer-button pause-button"><i class="fas fa-pause"></i></button>
-    <button id="end-call-button" class="footer-button end-call"><i class="fas fa-xmark"></i></button> </div>
+  <div class="fixed-footer">
+    <button id="attach-photo-button" class="footer-button"><i class="fas fa-image"></i></button>
+    
+    <button id="start-button" class="footer-button mic-button"><i class="fas fa-microphone"></i></button>
+    
+    <button id="end-call-button" class="footer-button end-call"><i class="fas fa-xmark"></i></button>
+  </div>
+
+  <input type="file" id="file-upload" accept="image/*" style="display: none;">
 
   <script src="script.js"></script>
 </body>
