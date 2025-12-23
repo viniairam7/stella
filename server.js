@@ -29,7 +29,7 @@ app.post("/perguntar", async (req, res) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 600
+        max_tokens: 120
       },
       {
         headers: {
