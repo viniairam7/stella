@@ -89,11 +89,23 @@ if ("webkitSpeechRecognition" in window) {
    FUNÇÃO FALAR (VÍDEO + LEGENDA)
 ================================ */
 function speak(textEn, textPt = null) {
-  if (!selectedVoice || !textEn) return;
+  const langSelect = document.getElementById("language-select");
+  const lang = langSelect?.value || "en";
 
-  const utter = new SpeechSynthesisUtterance(textEn);
-  utter.lang = "en-US";
-  utter.voice = selectedVoice;
+  const textToSpeak = lang === "pt" && textPt ? textPt : textEn;
+  if (!textToSpeak) return;
+
+  const utter = new SpeechSynthesisUtterance(textToSpeak);
+
+  // 🔊 Voz automática
+  if (lang === "pt") {
+    utter.lang = "pt-BR";
+    utter.voice =
+      synth.getVoices().find(v => v.lang === "pt-BR") || selectedVoice;
+  } else {
+    utter.lang = "en-US";
+    utter.voice = selectedVoice;
+  }
 
   utter.onstart = () => {
     videoIdle.classList.add("hidden");
@@ -113,16 +125,28 @@ function speak(textEn, textPt = null) {
     videoIdle.classList.remove("hidden");
   };
 
-// Legenda dinâmica (segura)
-const langSelect = document.getElementById("language-select");
-const lang = langSelect && langSelect.value ? langSelect.value : "en";
-
-statusDiv.textContent =
-  lang === "pt" && textPt ? textPt : textEn;
+  showSubtitles(textToSpeak);
 
   synth.cancel();
   synth.speak(utter);
 }
+
+function showSubtitles(text) {
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  let index = 0;
+
+  statusDiv.textContent = "";
+
+  const interval = setInterval(() => {
+    if (index >= sentences.length) {
+      clearInterval(interval);
+      return;
+    }
+    statusDiv.textContent = sentences[index].trim();
+    index++;
+  }, 1200); // tempo entre frases
+}
+
 
 /* ================================
    BOTÃO MICROFONE
