@@ -9,51 +9,72 @@ const attachPhotoButton = document.getElementById("attach-photo-button");
 const endCallButton = document.getElementById("end-call-button");
 const fileUpload = document.getElementById("file-upload");
 
-// NOVOS ELEMENTOS (vídeo + legenda)
 const videoIdle = document.getElementById("videoIdle");
 const videoSpeaking = document.getElementById("videoSpeaking");
 const subtitleLang = document.getElementById("subtitleLang");
 
 /* ===============================
-   VARIÁVEIS GLOBAIS
+   ESTADO GLOBAL
 ================================ */
 let recognition;
 const synth = window.speechSynthesis;
 let selectedVoice = null;
 let voicesLoaded = false;
 let firstMicClick = true;
+let currentLang = "en";
+
+/* ===============================
+   TEXTOS (i18n)
+================================ */
+const TEXT = {
+  en: {
+    listening: "🎧 Stella is listening...",
+    thinking: "✨ Stella is thinking...",
+    waiting: "⏹️ Waiting for answer...",
+    ended: "Session ended. Touch to talk!",
+    loadingVoice: "Loading voice...",
+    hello: "Hello! How can I help you?",
+    errorConnect: "I'm sorry, I couldn't connect right now.",
+    errorImage: "I couldn't translate the image."
+  },
+  pt: {
+    listening: "🎧 Stella está ouvindo...",
+    thinking: "✨ Stella está pensando...",
+    waiting: "⏹️ Aguardando resposta...",
+    ended: "Sessão encerrada. Toque para falar!",
+    loadingVoice: "Carregando voz...",
+    hello: "Olá! Como posso te ajudar?",
+    errorConnect: "Desculpa, não consegui me conectar agora.",
+    errorImage: "Não consegui traduzir a imagem."
+  }
+};
+
+function t(key) {
+  return TEXT[currentLang][key] || "";
+}
 
 /* ===============================
    CONTROLE DE VÍDEO
 ================================ */
 function startSpeakingAnimation() {
-  videoIdle.classList.add("hidden");
-  videoSpeaking.classList.remove("hidden");
+  videoIdle?.classList.add("hidden");
+  videoSpeaking?.classList.remove("hidden");
   videoSpeaking.currentTime = 0;
-  videoSpeaking.play();
+  videoSpeaking.play().catch(() => {});
 }
 
 function stopSpeakingAnimation() {
-  videoSpeaking.pause();
-  videoSpeaking.classList.add("hidden");
-  videoIdle.classList.remove("hidden");
+  videoSpeaking?.pause();
+  videoSpeaking?.classList.add("hidden");
+  videoIdle?.classList.remove("hidden");
 }
 
 /* ===============================
-   CARREGAMENTO E SELEÇÃO DE VOZ
+   VOZ (Speech Synthesis)
 ================================ */
 function loadAndSelectVoice() {
   const voices = synth.getVoices();
-
-  if (!voices.length) {
-    console.warn("Nenhuma voz disponível ainda.");
-    return;
-  }
-
-  console.log("Vozes disponíveis:");
-  voices.forEach((v, i) =>
-    console.log(`${i}: ${v.name} (${v.lang})`)
-  );
+  if (!voices.length) return;
 
   selectedVoice =
     voices.find(v => v.name === "Alex" && v.lang === "en-US") ||
@@ -65,7 +86,7 @@ function loadAndSelectVoice() {
   console.log("🎤 Voz selecionada:", selectedVoice.name);
 }
 
-/* iOS workaround */
+/* iOS unlock */
 window.addEventListener("click", () => {
   if (!voicesLoaded) {
     synth.getVoices();
@@ -78,87 +99,77 @@ speechSynthesis.onvoiceschanged = () => {
 };
 
 /* ===============================
-   SPEECH RECOGNITION
+   RECONHECIMENTO DE VOZ
 ================================ */
 if ("webkitSpeechRecognition" in window) {
   recognition = new webkitSpeechRecognition();
-  recognition.lang = "en-US";
   recognition.continuous = false;
   recognition.interimResults = false;
+  recognition.lang = "en-US";
 
   recognition.onstart = () => {
-    statusDiv.textContent = "🎧 Stella is listening...";
+    statusDiv.textContent = t("listening");
   };
 
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
-    statusDiv.textContent = "🗣️ You said: " + transcript;
+    statusDiv.textContent = "🗣️ " + transcript;
     sendToStella(transcript);
   };
 
   recognition.onerror = (event) => {
-    console.error("Speech Recognition Error:", event.error);
-    statusDiv.textContent = "❌ Error: " + event.error;
+    console.error("Speech error:", event.error);
   };
 
   recognition.onend = () => {
-    statusDiv.textContent = "⏹️ Waiting for answer...";
+    statusDiv.textContent = t("waiting");
   };
 } else {
-  alert("Speech recognition not supported in this browser.");
+  alert("Speech recognition not supported.");
 }
 
 /* ===============================
-   FUNÇÃO FALAR (COM VÍDEO + LEGENDA)
+   FALAR (VÍDEO + LEGENDA)
 ================================ */
 function speak(textEn, textPt = null) {
-  if (!textEn || !selectedVoice) return;
+  if (!voicesLoaded || !textEn) return;
 
   const utter = new SpeechSynthesisUtterance(textEn);
-  utter.lang = "en-US";
   utter.voice = selectedVoice;
+  utter.lang = "en-US";
 
-  utter.onstart = () => {
-    startSpeakingAnimation();
-  };
+  utter.onstart = startSpeakingAnimation;
+  utter.onend = stopSpeakingAnimation;
+  utter.onerror = stopSpeakingAnimation;
 
-  utter.onend = () => {
-    stopSpeakingAnimation();
-  };
-
-  utter.onerror = (e) => {
-    console.error("Speech Synthesis Error:", e);
-    stopSpeakingAnimation();
-  };
-
-  // Legenda dinâmica
-  const lang = subtitleLang?.value || "en";
   statusDiv.textContent =
-    lang === "pt" && textPt ? textPt : textEn;
+    currentLang === "pt" && textPt ? textPt : textEn;
 
   synth.cancel();
   synth.speak(utter);
 }
 
 /* ===============================
+   CONTROLE DE IDIOMA
+================================ */
+subtitleLang?.addEventListener("change", () => {
+  currentLang = subtitleLang.value;
+  recognition.lang = currentLang === "pt" ? "pt-BR" : "en-US";
+});
+
+/* ===============================
    BOTÃO MICROFONE
 ================================ */
 startBtn.onclick = () => {
-  console.log("🎙️ Microfone clicado");
-
   if (!voicesLoaded) {
+    statusDiv.textContent = t("loadingVoice");
     loadAndSelectVoice();
-    statusDiv.textContent = "Loading voice...";
     return;
   }
 
   if (firstMicClick) {
-    speak(
-      "Hello! How can I help you?",
-      "Olá! Como posso te ajudar?"
-    );
+    speak(TEXT.en.hello, TEXT.pt.hello);
     firstMicClick = false;
-
     setTimeout(() => recognition.start(), 1200);
   } else {
     recognition.start();
@@ -172,16 +183,15 @@ endCallButton.onclick = () => {
   recognition?.stop();
   synth.cancel();
   stopSpeakingAnimation();
-
-  statusDiv.textContent = "Session ended. Touch to talk!";
+  statusDiv.textContent = t("ended");
   firstMicClick = true;
 };
 
 /* ===============================
-   BACKEND STELLA
+   BACKEND STELLA (Render)
 ================================ */
 function sendToStella(pergunta) {
-  statusDiv.textContent = "✨ Stella is thinking...";
+  statusDiv.textContent = t("thinking");
 
   fetch("https://stella-7.onrender.com/perguntar", {
     method: "POST",
@@ -193,12 +203,8 @@ function sendToStella(pergunta) {
       const resposta = data.reply || "Sorry, I didn’t understand.";
       speak(resposta);
     })
-    .catch(err => {
-      console.error(err);
-      speak(
-        "I'm sorry, I couldn't connect right now.",
-        "Desculpa, não consegui me conectar agora."
-      );
+    .catch(() => {
+      speak(TEXT.en.errorConnect, TEXT.pt.errorConnect);
     });
 }
 
@@ -210,8 +216,6 @@ attachPhotoButton.onclick = () => fileUpload.click();
 fileUpload.onchange = () => {
   const file = fileUpload.files?.[0];
   if (!file || !file.type.startsWith("image/")) return;
-
-  statusDiv.textContent = "📸 Uploading image...";
 
   const reader = new FileReader();
   reader.onload = () => {
@@ -231,10 +235,7 @@ function sendImageForTranslation(imageDataUrl, fileName) {
       speak(data.translationResult);
     })
     .catch(() => {
-      speak(
-        "I couldn't translate the image.",
-        "Não consegui traduzir a imagem."
-      );
+      speak(TEXT.en.errorImage, TEXT.pt.errorImage);
     });
 }
 
@@ -242,4 +243,3 @@ function sendImageForTranslation(imageDataUrl, fileName) {
    INIT
 ================================ */
 loadAndSelectVoice();
-
