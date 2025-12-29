@@ -113,9 +113,12 @@ function speak(textEn, textPt = null) {
     videoIdle.classList.remove("hidden");
   };
 
-  const lang = subtitleLang.value;
-  statusDiv.textContent =
-    lang === "pt" && textPt ? textPt : textEn;
+// Legenda dinâmica (segura)
+const langSelect = document.getElementById("language-select");
+const lang = langSelect && langSelect.value ? langSelect.value : "en";
+
+statusDiv.textContent =
+  lang === "pt" && textPt ? textPt : textEn;
 
   synth.cancel();
   synth.speak(utter);
