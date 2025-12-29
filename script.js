@@ -1,80 +1,47 @@
-/* ===============================
-   ELEMENTOS DA INTERFACE
-================================ */
+/* =============================== ELEMENTOS DA INTERFACE ================================ */
 const startBtn = document.getElementById("start-button");
 const stopBtn = document.getElementById("stop-button"); // mantido por compatibilidade
 const statusDiv = document.getElementById("status");
-
 const attachPhotoButton = document.getElementById("attach-photo-button");
 const endCallButton = document.getElementById("end-call-button");
 const fileUpload = document.getElementById("file-upload");
 
+// NOVOS ELEMENTOS (vídeo + legenda)
 const videoIdle = document.getElementById("videoIdle");
 const videoSpeaking = document.getElementById("videoSpeaking");
 const subtitleLang = document.getElementById("subtitleLang");
 
-/* ===============================
-   ESTADO GLOBAL
-================================ */
+/* =============================== VARIÁVEIS GLOBAIS ================================ */
 let recognition;
 const synth = window.speechSynthesis;
 let selectedVoice = null;
 let voicesLoaded = false;
 let firstMicClick = true;
-let currentLang = "en";
 
-/* ===============================
-   TEXTOS (i18n)
-================================ */
-const TEXT = {
-  en: {
-    listening: "🎧 Stella is listening...",
-    thinking: "✨ Stella is thinking...",
-    waiting: "⏹️ Waiting for answer...",
-    ended: "Session ended. Touch to talk!",
-    loadingVoice: "Loading voice...",
-    hello: "Hello! How can I help you?",
-    errorConnect: "I'm sorry, I couldn't connect right now.",
-    errorImage: "I couldn't translate the image."
-  },
-  pt: {
-    listening: "🎧 Stella está ouvindo...",
-    thinking: "✨ Stella está pensando...",
-    waiting: "⏹️ Aguardando resposta...",
-    ended: "Sessão encerrada. Toque para falar!",
-    loadingVoice: "Carregando voz...",
-    hello: "Olá! Como posso te ajudar?",
-    errorConnect: "Desculpa, não consegui me conectar agora.",
-    errorImage: "Não consegui traduzir a imagem."
-  }
-};
-
-function t(key) {
-  return TEXT[currentLang][key] || "";
-}
-
-/* ===============================
-   CONTROLE DE VÍDEO
-================================ */
+/* =============================== CONTROLE DE VÍDEO ================================ */
 function startSpeakingAnimation() {
-  videoIdle?.classList.add("hidden");
-  videoSpeaking?.classList.remove("hidden");
+  videoIdle.classList.add("hidden");
+  videoSpeaking.classList.remove("hidden");
   videoSpeaking.currentTime = 0;
-  videoSpeaking.play().catch(() => {});
+  videoSpeaking.play();
 }
 
 function stopSpeakingAnimation() {
-  videoSpeaking?.pause();
-  videoSpeaking?.classList.add("hidden");
-  videoIdle?.classList.remove("hidden");
+  videoSpeaking.pause();
+  videoSpeaking.classList.add("hidden");
+  videoIdle.classList.remove("hidden");
 }
 
-/* ===============================
-   VOZ (Speech Synthesis)
-================================ */
+/* =============================== CARREGAMENTO E SELEÇÃO DE VOZ ================================ */
 function loadAndSelectVoice() {
   const voices = synth.getVoices();
-  if (!voices.length) return;
+  if (!voices.length) {
+    console.warn("Nenhuma voz disponível ainda.");
+    return;
+  }
+
+  console.log("Vozes disponíveis:");
+  voices.forEach((v, i) => console.log(${i}: ${v.name} (${v.lang})) );
 
   selectedVoice =
     voices.find(v => v.name === "Alex" && v.lang === "en-US") ||
@@ -86,89 +53,98 @@ function loadAndSelectVoice() {
   console.log("🎤 Voz selecionada:", selectedVoice.name);
 }
 
-/* iOS unlock */
-window.addEventListener("click", () => {
-  if (!voicesLoaded) {
-    synth.getVoices();
-    loadAndSelectVoice();
-  }
-}, { once: true });
+/* iOS workaround */
+window.addEventListener(
+  "click",
+  () => {
+    if (!voicesLoaded) {
+      synth.getVoices();
+      loadAndSelectVoice();
+    }
+  },
+  { once: true }
+);
 
 speechSynthesis.onvoiceschanged = () => {
   if (!voicesLoaded) loadAndSelectVoice();
 };
 
-/* ===============================
-   RECONHECIMENTO DE VOZ
-================================ */
+/* =============================== SPEECH RECOGNITION ================================ */
 if ("webkitSpeechRecognition" in window) {
   recognition = new webkitSpeechRecognition();
+  recognition.lang = "en-US";
   recognition.continuous = false;
   recognition.interimResults = false;
-  recognition.lang = "en-US";
 
   recognition.onstart = () => {
-    statusDiv.textContent = t("listening");
+    statusDiv.textContent = "🎧 Stella is listening...";
   };
 
-  recognition.onresult = (event) => {
+  recognition.onresult = event => {
     const transcript = event.results[0][0].transcript;
-    statusDiv.textContent = "🗣️ " + transcript;
+    statusDiv.textContent = "🗣️ You said: " + transcript;
     sendToStella(transcript);
   };
 
-  recognition.onerror = (event) => {
-    console.error("Speech error:", event.error);
+  recognition.onerror = event => {
+    console.error("Speech Recognition Error:", event.error);
+    statusDiv.textContent = "❌ Error: " + event.error;
   };
 
   recognition.onend = () => {
-    statusDiv.textContent = t("waiting");
+    statusDiv.textContent = "⏹️ Waiting for answer...";
   };
 } else {
-  alert("Speech recognition not supported.");
+  alert("Speech recognition not supported in this browser.");
 }
 
-/* ===============================
-   FALAR (VÍDEO + LEGENDA)
-================================ */
+/* =============================== FUNÇÃO FALAR (COM VÍDEO + LEGENDA) ================================ */
 function speak(textEn, textPt = null) {
-  if (!voicesLoaded || !textEn) return;
+  if (!textEn || !selectedVoice) return;
 
   const utter = new SpeechSynthesisUtterance(textEn);
-  utter.voice = selectedVoice;
   utter.lang = "en-US";
+  utter.voice = selectedVoice;
 
-  utter.onstart = startSpeakingAnimation;
-  utter.onend = stopSpeakingAnimation;
-  utter.onerror = stopSpeakingAnimation;
+  utter.onstart = () => {
+    startSpeakingAnimation();
+  };
 
-  statusDiv.textContent =
-    currentLang === "pt" && textPt ? textPt : textEn;
+  utter.onend = () => {
+    stopSpeakingAnimation();
+  };
 
-  synth.cancel();
-  synth.speak(utter);
+  utter.onerror = e => {
+    console.error("Speech Synthesis Error:", e);
+    stopSpeakingAnimation();
+  };
+
+  // Legenda dinâmica
+const langSelect = document.getElementById("language-select");
+const lang = langSelect ? langSelect.value : "en";
+
+statusDiv.textContent = lang === "pt" && textPt ? textPt : textEn;
+
+synth.cancel();
+synth.speak(utter);
 }
 
-/* ===============================
-   CONTROLE DE IDIOMA
-================================ */
-subtitleLang?.addEventListener("change", () => {
-  currentLang = subtitleLang.value;
-  recognition.lang = currentLang === "pt" ? "pt-BR" : "en-US";
-});
 
-/* ===============================
-   BOTÃO MICROFONE
-================================ */
+/* =============================== BOTÃO MICROFONE ================================ */
 startBtn.onclick = () => {
+  console.log("🎙️ Microfone clicado");
+
   if (!voicesLoaded) {
-    statusDiv.textContent = t("loadingVoice");
     loadAndSelectVoice();
+    statusDiv.textContent = "Loading voice...";
     return;
   }
 
   if (firstMicClick) {
-    speak(TEXT.en.hello, TEXT.pt.hello);
+    speak(
+      "Hello! How can I help you?",
+      "Olá! Como posso te ajudar?"
+    );
     firstMicClick = false;
     setTimeout(() => recognition.start(), 1200);
   } else {
@@ -176,22 +152,18 @@ startBtn.onclick = () => {
   }
 };
 
-/* ===============================
-   ENCERRAR SESSÃO
-================================ */
+/* =============================== ENCERRAR SESSÃO ================================ */
 endCallButton.onclick = () => {
   recognition?.stop();
   synth.cancel();
   stopSpeakingAnimation();
-  statusDiv.textContent = t("ended");
+  statusDiv.textContent = "Session ended. Touch to talk!";
   firstMicClick = true;
 };
 
-/* ===============================
-   BACKEND STELLA (Render)
-================================ */
+/* =============================== BACKEND STELLA ================================ */
 function sendToStella(pergunta) {
-  statusDiv.textContent = t("thinking");
+  statusDiv.textContent = "✨ Stella is thinking...";
 
   fetch("https://stella-7.onrender.com/perguntar", {
     method: "POST",
@@ -203,24 +175,29 @@ function sendToStella(pergunta) {
       const resposta = data.reply || "Sorry, I didn’t understand.";
       speak(resposta);
     })
-    .catch(() => {
-      speak(TEXT.en.errorConnect, TEXT.pt.errorConnect);
+    .catch(err => {
+      console.error(err);
+      speak(
+        "I'm sorry, I couldn't connect right now.",
+        "Desculpa, não consegui me conectar agora."
+      );
     });
 }
 
-/* ===============================
-   UPLOAD DE IMAGEM
-================================ */
+/* =============================== UPLOAD DE IMAGEM ================================ */
 attachPhotoButton.onclick = () => fileUpload.click();
 
 fileUpload.onchange = () => {
   const file = fileUpload.files?.[0];
   if (!file || !file.type.startsWith("image/")) return;
 
+  statusDiv.textContent = "📸 Uploading image...";
   const reader = new FileReader();
+
   reader.onload = () => {
     sendImageForTranslation(reader.result, file.name);
   };
+
   reader.readAsDataURL(file);
 };
 
@@ -235,11 +212,12 @@ function sendImageForTranslation(imageDataUrl, fileName) {
       speak(data.translationResult);
     })
     .catch(() => {
-      speak(TEXT.en.errorImage, TEXT.pt.errorImage);
+      speak(
+        "I couldn't translate the image.",
+        "Não consegui traduzir a imagem."
+      );
     });
 }
 
-/* ===============================
-   INIT
-================================ */
+/* =============================== INIT ================================ */
 loadAndSelectVoice();
