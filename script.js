@@ -1,47 +1,37 @@
-/* =============================== ELEMENTOS DA INTERFACE ================================ */
+/* ================================
+   ELEMENTOS DA INTERFACE
+================================ */
 const startBtn = document.getElementById("start-button");
-const stopBtn = document.getElementById("stop-button"); // mantido por compatibilidade
 const statusDiv = document.getElementById("status");
+
 const attachPhotoButton = document.getElementById("attach-photo-button");
 const endCallButton = document.getElementById("end-call-button");
 const fileUpload = document.getElementById("file-upload");
 
-// NOVOS ELEMENTOS (vídeo + legenda)
 const videoIdle = document.getElementById("videoIdle");
 const videoSpeaking = document.getElementById("videoSpeaking");
 const subtitleLang = document.getElementById("subtitleLang");
 
-/* =============================== VARIÁVEIS GLOBAIS ================================ */
-let recognition;
+/* ================================
+   SPEECH SYNTHESIS
+================================ */
 const synth = window.speechSynthesis;
 let selectedVoice = null;
 let voicesLoaded = false;
 let firstMicClick = true;
 
-/* =============================== CONTROLE DE VÍDEO ================================ */
-function startSpeakingAnimation() {
-  videoIdle.classList.add("hidden");
-  videoSpeaking.classList.remove("hidden");
-  videoSpeaking.currentTime = 0;
-  videoSpeaking.play();
-}
+/* ================================
+   SPEECH RECOGNITION
+================================ */
+let recognition;
 
-function stopSpeakingAnimation() {
-  videoSpeaking.pause();
-  videoSpeaking.classList.add("hidden");
-  videoIdle.classList.remove("hidden");
-}
-
-/* =============================== CARREGAMENTO E SELEÇÃO DE VOZ ================================ */
+/* ================================
+   CARREGAR VOZ (iOS / Chrome safe)
+================================ */
 function loadAndSelectVoice() {
   const voices = synth.getVoices();
-  if (!voices.length) {
-    console.warn("Nenhuma voz disponível ainda.");
-    return;
-  }
 
-  console.log("Vozes disponíveis:");
-  voices.forEach((v, i) => console.log(${i}: ${v.name} (${v.lang})) );
+  if (!voices.length) return;
 
   selectedVoice =
     voices.find(v => v.name === "Alex" && v.lang === "en-US") ||
@@ -53,23 +43,19 @@ function loadAndSelectVoice() {
   console.log("🎤 Voz selecionada:", selectedVoice.name);
 }
 
-/* iOS workaround */
-window.addEventListener(
-  "click",
-  () => {
-    if (!voicesLoaded) {
-      synth.getVoices();
-      loadAndSelectVoice();
-    }
-  },
-  { once: true }
-);
+/* iOS precisa de interação */
+window.addEventListener("click", () => {
+  if (!voicesLoaded) {
+    synth.getVoices();
+    loadAndSelectVoice();
+  }
+}, { once: true });
 
-speechSynthesis.onvoiceschanged = () => {
-  if (!voicesLoaded) loadAndSelectVoice();
-};
+speechSynthesis.onvoiceschanged = loadAndSelectVoice;
 
-/* =============================== SPEECH RECOGNITION ================================ */
+/* ================================
+   SPEECH RECOGNITION SETUP
+================================ */
 if ("webkitSpeechRecognition" in window) {
   recognition = new webkitSpeechRecognition();
   recognition.lang = "en-US";
@@ -80,60 +66,65 @@ if ("webkitSpeechRecognition" in window) {
     statusDiv.textContent = "🎧 Stella is listening...";
   };
 
-  recognition.onresult = event => {
+  recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
-    statusDiv.textContent = "🗣️ You said: " + transcript;
+    statusDiv.textContent = `🗣️ You said: ${transcript}`;
     sendToStella(transcript);
   };
 
-  recognition.onerror = event => {
-    console.error("Speech Recognition Error:", event.error);
-    statusDiv.textContent = "❌ Error: " + event.error;
+  recognition.onerror = (event) => {
+    statusDiv.textContent = "❌ Microphone error. Try again.";
+    console.error(event.error);
   };
 
   recognition.onend = () => {
     statusDiv.textContent = "⏹️ Waiting for answer...";
   };
+
 } else {
   alert("Speech recognition not supported in this browser.");
 }
 
-/* =============================== FUNÇÃO FALAR (COM VÍDEO + LEGENDA) ================================ */
+/* ================================
+   FUNÇÃO FALAR (VÍDEO + LEGENDA)
+================================ */
 function speak(textEn, textPt = null) {
-  if (!textEn || !selectedVoice) return;
+  if (!selectedVoice || !textEn) return;
 
   const utter = new SpeechSynthesisUtterance(textEn);
   utter.lang = "en-US";
   utter.voice = selectedVoice;
 
   utter.onstart = () => {
-    startSpeakingAnimation();
+    videoIdle.classList.add("hidden");
+    videoSpeaking.classList.remove("hidden");
+    videoSpeaking.currentTime = 0;
+    videoSpeaking.play();
   };
 
   utter.onend = () => {
-    stopSpeakingAnimation();
+    videoSpeaking.pause();
+    videoSpeaking.classList.add("hidden");
+    videoIdle.classList.remove("hidden");
   };
 
-  utter.onerror = e => {
-    console.error("Speech Synthesis Error:", e);
-    stopSpeakingAnimation();
+  utter.onerror = () => {
+    videoSpeaking.classList.add("hidden");
+    videoIdle.classList.remove("hidden");
   };
 
-  // Legenda dinâmica
-const langSelect = document.getElementById("language-select");
-const lang = langSelect ? langSelect.value : "en";
+  const lang = subtitleLang.value;
+  statusDiv.textContent =
+    lang === "pt" && textPt ? textPt : textEn;
 
-statusDiv.textContent = lang === "pt" && textPt ? textPt : textEn;
-
-synth.cancel();
-synth.speak(utter);
+  synth.cancel();
+  synth.speak(utter);
 }
 
-
-/* =============================== BOTÃO MICROFONE ================================ */
+/* ================================
+   BOTÃO MICROFONE
+================================ */
 startBtn.onclick = () => {
-  console.log("🎙️ Microfone clicado");
-
   if (!voicesLoaded) {
     loadAndSelectVoice();
     statusDiv.textContent = "Loading voice...";
@@ -142,41 +133,49 @@ startBtn.onclick = () => {
 
   if (firstMicClick) {
     speak(
-      "Hello! How can I help you?",
-      "Olá! Como posso te ajudar?"
+      "Hello! How can I help you today?",
+      "Olá! Como posso te ajudar hoje?"
     );
     firstMicClick = false;
+
     setTimeout(() => recognition.start(), 1200);
   } else {
     recognition.start();
   }
 };
 
-/* =============================== ENCERRAR SESSÃO ================================ */
+/* ================================
+   ENCERRAR SESSÃO
+================================ */
 endCallButton.onclick = () => {
   recognition?.stop();
   synth.cancel();
-  stopSpeakingAnimation();
+
+  videoSpeaking.pause();
+  videoSpeaking.classList.add("hidden");
+  videoIdle.classList.remove("hidden");
+
   statusDiv.textContent = "Session ended. Touch to talk!";
   firstMicClick = true;
 };
 
-/* =============================== BACKEND STELLA ================================ */
-function sendToStella(pergunta) {
+/* ================================
+   BACKEND STELLA
+================================ */
+function sendToStella(question) {
   statusDiv.textContent = "✨ Stella is thinking...";
 
   fetch("https://stella-7.onrender.com/perguntar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pergunta })
+    body: JSON.stringify({ pergunta: question })
   })
     .then(res => res.json())
     .then(data => {
-      const resposta = data.reply || "Sorry, I didn’t understand.";
-      speak(resposta);
+      const reply = data.reply || "Sorry, I didn't understand.";
+      speak(reply);
     })
-    .catch(err => {
-      console.error(err);
+    .catch(() => {
       speak(
         "I'm sorry, I couldn't connect right now.",
         "Desculpa, não consegui me conectar agora."
@@ -184,32 +183,36 @@ function sendToStella(pergunta) {
     });
 }
 
-/* =============================== UPLOAD DE IMAGEM ================================ */
+/* ================================
+   UPLOAD DE IMAGEM
+================================ */
 attachPhotoButton.onclick = () => fileUpload.click();
 
 fileUpload.onchange = () => {
-  const file = fileUpload.files?.[0];
+  const file = fileUpload.files[0];
   if (!file || !file.type.startsWith("image/")) return;
 
   statusDiv.textContent = "📸 Uploading image...";
-  const reader = new FileReader();
 
+  const reader = new FileReader();
   reader.onload = () => {
     sendImageForTranslation(reader.result, file.name);
   };
-
   reader.readAsDataURL(file);
 };
 
-function sendImageForTranslation(imageDataUrl, fileName) {
+function sendImageForTranslation(imageData, name) {
   fetch("YOUR_BACKEND_TRANSLATION_ENDPOINT", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageData: imageDataUrl, name: fileName })
+    body: JSON.stringify({ imageData, name })
   })
     .then(res => res.json())
     .then(data => {
-      speak(data.translationResult);
+      speak(
+        data.translationResult,
+        "Tradução concluída."
+      );
     })
     .catch(() => {
       speak(
@@ -219,5 +222,7 @@ function sendImageForTranslation(imageDataUrl, fileName) {
     });
 }
 
-/* =============================== INIT ================================ */
+/* ================================
+   INIT
+================================ */
 loadAndSelectVoice();
