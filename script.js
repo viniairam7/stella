@@ -89,23 +89,40 @@ if ("webkitSpeechRecognition" in window) {
    FUNÇÃO FALAR (VÍDEO + LEGENDA)
 ================================ */
 function speak(textEn, textPt = null) {
+  if (!textEn || !selectedVoice) return;
+
+  // SEMPRE fala em inglês
+  const utter = new SpeechSynthesisUtterance(textEn);
+  utter.lang = "en-US";
+  utter.voice = selectedVoice;
+
+  utter.onstart = () => {
+    startSpeakingAnimation();
+  };
+
+  utter.onend = () => {
+    stopSpeakingAnimation();
+  };
+
+  utter.onerror = (e) => {
+    console.error("Speech Synthesis Error:", e);
+    stopSpeakingAnimation();
+  };
+
+  // 🔤 LEGENDA INTEIRA (não fracionada)
   const langSelect = document.getElementById("language-select");
-  const lang = langSelect?.value || "en";
+  const lang = langSelect ? langSelect.value : "en";
 
-  const textToSpeak = lang === "pt" && textPt ? textPt : textEn;
-  if (!textToSpeak) return;
-
-  const utter = new SpeechSynthesisUtterance(textToSpeak);
-
-  // 🔊 Voz automática
-  if (lang === "pt") {
-    utter.lang = "pt-BR";
-    utter.voice =
-      synth.getVoices().find(v => v.lang === "pt-BR") || selectedVoice;
+  if (lang === "pt" && textPt) {
+    statusDiv.textContent = textPt; // tradução só na legenda
   } else {
-    utter.lang = "en-US";
-    utter.voice = selectedVoice;
+    statusDiv.textContent = textEn; // legenda em inglês
   }
+
+  synth.cancel();
+  synth.speak(utter);
+}
+
 
   utter.onstart = () => {
     videoIdle.classList.add("hidden");
@@ -125,11 +142,6 @@ function speak(textEn, textPt = null) {
     videoIdle.classList.remove("hidden");
   };
 
-  showSubtitles(textToSpeak);
-
-  synth.cancel();
-  synth.speak(utter);
-}
 
 function showSubtitles(text) {
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
