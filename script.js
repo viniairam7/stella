@@ -91,38 +91,9 @@ if ("webkitSpeechRecognition" in window) {
 function speak(textEn, textPt = null) {
   if (!textEn || !selectedVoice) return;
 
-  // SEMPRE fala em inglês
   const utter = new SpeechSynthesisUtterance(textEn);
   utter.lang = "en-US";
   utter.voice = selectedVoice;
-
-  utter.onstart = () => {
-    startSpeakingAnimation();
-  };
-
-  utter.onend = () => {
-    stopSpeakingAnimation();
-  };
-
-  utter.onerror = (e) => {
-    console.error("Speech Synthesis Error:", e);
-    stopSpeakingAnimation();
-  };
-
-  // 🔤 LEGENDA INTEIRA (não fracionada)
-  const langSelect = document.getElementById("language-select");
-  const lang = langSelect ? langSelect.value : "en";
-
-  if (lang === "pt" && textPt) {
-    statusDiv.textContent = textPt; // tradução só na legenda
-  } else {
-    statusDiv.textContent = textEn; // legenda em inglês
-  }
-
-  synth.cancel();
-  synth.speak(utter);
-}
-
 
   utter.onstart = () => {
     videoIdle.classList.add("hidden");
@@ -141,6 +112,16 @@ function speak(textEn, textPt = null) {
     videoSpeaking.classList.add("hidden");
     videoIdle.classList.remove("hidden");
   };
+
+  const langSelect = document.getElementById("language-select");
+  const lang = langSelect ? langSelect.value : "en";
+
+  statusDiv.textContent =
+    lang === "pt" && textPt ? textPt : textEn;
+
+  synth.cancel();
+  synth.speak(utter);
+}
 
 
 function showSubtitles(text) {
