@@ -10,7 +10,6 @@ const fileUpload = document.getElementById("file-upload");
 
 const videoIdle = document.getElementById("videoIdle");
 const videoSpeaking = document.getElementById("videoSpeaking");
-const subtitleLang = document.getElementById("subtitleLang");
 
 /* ================================
    SPEECH SYNTHESIS
@@ -26,32 +25,40 @@ let firstMicClick = true;
 let recognition;
 
 /* ================================
-   CARREGAR VOZ (iOS / Chrome safe)
+   VOZ – DESKTOP + MOBILE SAFE
 ================================ */
 function loadAndSelectVoice() {
   const voices = synth.getVoices();
   if (!voices.length) return;
 
-  // Prioridade: vozes neurais / naturais
-  selectedVoice =
-    voices.find(v => v.name.toLowerCase().includes("natural")) ||
-    voices.find(v => v.name.toLowerCase().includes("neural")) ||
-    voices.find(v => v.name.includes("Google US English")) ||
-    voices.find(v => v.lang === "en-US") ||
-    voices[0];
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  if (!isMobile) {
+    selectedVoice =
+      voices.find(v => v.name.toLowerCase().includes("natural")) ||
+      voices.find(v => v.name.toLowerCase().includes("neural")) ||
+      voices.find(v => v.name.includes("Google")) ||
+      voices.find(v => v.lang === "en-US");
+  } else {
+    // mobile: melhor possível dentro da limitação
+    selectedVoice = voices.find(v => v.lang === "en-US") || voices[0];
+  }
 
   voicesLoaded = true;
-  console.log("🎤 Voz selecionada:", selectedVoice.name);
+  console.log("🎤 Voz selecionada:", selectedVoice?.name);
 }
 
-
 /* iOS precisa de interação */
-window.addEventListener("click", () => {
-  if (!voicesLoaded) {
-    synth.getVoices();
-    loadAndSelectVoice();
-  }
-}, { once: true });
+window.addEventListener(
+  "click",
+  () => {
+    if (!voicesLoaded) {
+      synth.getVoices();
+      loadAndSelectVoice();
+    }
+  },
+  { once: true }
+);
 
 speechSynthesis.onvoiceschanged = loadAndSelectVoice;
 
@@ -74,26 +81,40 @@ if ("webkitSpeechRecognition" in window) {
     sendToStella(transcript);
   };
 
-  recognition.onerror = (event) => {
+  recognition.onerror = () => {
     statusDiv.textContent = "❌ Microphone error. Try again.";
-    console.error(event.error);
   };
 
   recognition.onend = () => {
     statusDiv.textContent = "⏹️ Waiting for answer...";
   };
-
 } else {
-  alert("Speech recognition not supported in this browser.");
+  alert("Speech recognition not supported.");
 }
 
 /* ================================
-   FUNÇÃO FALAR (VÍDEO + LEGENDA)
+   TRADUÇÃO SOMENTE DA LEGENDA
 ================================ */
-function speak(textEn, textPt = null) {
+async function translateToPT(text) {
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+        text
+      )}&langpair=en|pt`
+    );
+    const data = await res.json();
+    return data.responseData.translatedText;
+  } catch {
+    return text;
+  }
+}
+
+/* ================================
+   FALAR (INGLÊS) + LEGENDA (EN/PT)
+================================ */
+async function speak(textEn) {
   if (!textEn || !selectedVoice) return;
 
-  // 🎤 FALA SEMPRE EM INGLÊS
   const utter = new SpeechSynthesisUtterance(textEn);
   utter.lang = "en-US";
   utter.voice = selectedVoice;
@@ -116,34 +137,19 @@ function speak(textEn, textPt = null) {
     videoIdle.classList.remove("hidden");
   };
 
-  // 📄 LEGENDA CONTROLADA PELO USUÁRIO
+  // legenda inteira
   const langSelect = document.getElementById("language-select");
   const selectedLang = langSelect?.value || "en";
 
-  statusDiv.textContent =
-    selectedLang === "pt" && textPt ? textPt : textEn;
+  if (selectedLang === "pt") {
+    statusDiv.textContent = await translateToPT(textEn);
+  } else {
+    statusDiv.textContent = textEn;
+  }
 
   synth.cancel();
   synth.speak(utter);
 }
-
-
-function showSubtitles(text) {
-  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-  let index = 0;
-
-  statusDiv.textContent = "";
-
-  const interval = setInterval(() => {
-    if (index >= sentences.length) {
-      clearInterval(interval);
-      return;
-    }
-    statusDiv.textContent = sentences[index].trim();
-    index++;
-  }, 1200); // tempo entre frases
-}
-
 
 /* ================================
    BOTÃO MICROFONE
@@ -156,12 +162,8 @@ startBtn.onclick = () => {
   }
 
   if (firstMicClick) {
-    speak(
-      "Hello! How can I help you today?",
-      "Olá! Como posso te ajudar hoje?"
-    );
+    speak("Hello! How can I help you today?");
     firstMicClick = false;
-
     setTimeout(() => recognition.start(), 1200);
   } else {
     recognition.start();
@@ -169,7 +171,7 @@ startBtn.onclick = () => {
 };
 
 /* ================================
-   ENCERRAR SESSÃO
+   ENCERRAR
 ================================ */
 endCallButton.onclick = () => {
   recognition?.stop();
@@ -196,53 +198,10 @@ function sendToStella(question) {
   })
     .then(res => res.json())
     .then(data => {
-      const reply = data.reply || "Sorry, I didn't understand.";
-      speak(reply);
+      speak(data.reply || "Sorry, I didn't understand.");
     })
     .catch(() => {
-      speak(
-        "I'm sorry, I couldn't connect right now.",
-        "Desculpa, não consegui me conectar agora."
-      );
-    });
-}
-
-/* ================================
-   UPLOAD DE IMAGEM
-================================ */
-attachPhotoButton.onclick = () => fileUpload.click();
-
-fileUpload.onchange = () => {
-  const file = fileUpload.files[0];
-  if (!file || !file.type.startsWith("image/")) return;
-
-  statusDiv.textContent = "📸 Uploading image...";
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    sendImageForTranslation(reader.result, file.name);
-  };
-  reader.readAsDataURL(file);
-};
-
-function sendImageForTranslation(imageData, name) {
-  fetch("YOUR_BACKEND_TRANSLATION_ENDPOINT", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageData, name })
-  })
-    .then(res => res.json())
-    .then(data => {
-      speak(
-        data.translationResult,
-        "Tradução concluída."
-      );
-    })
-    .catch(() => {
-      speak(
-        "I couldn't translate the image.",
-        "Não consegui traduzir a imagem."
-      );
+      speak("I'm sorry, I couldn't connect right now.");
     });
 }
 
@@ -250,3 +209,4 @@ function sendImageForTranslation(imageData, name) {
    INIT
 ================================ */
 loadAndSelectVoice();
+
