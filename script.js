@@ -30,11 +30,12 @@ let recognition;
 ================================ */
 function loadAndSelectVoice() {
   const voices = synth.getVoices();
-
   if (!voices.length) return;
 
+  // Prioridade: vozes neurais / naturais
   selectedVoice =
-    voices.find(v => v.name === "Alex" && v.lang === "en-US") ||
+    voices.find(v => v.name.toLowerCase().includes("natural")) ||
+    voices.find(v => v.name.toLowerCase().includes("neural")) ||
     voices.find(v => v.name.includes("Google US English")) ||
     voices.find(v => v.lang === "en-US") ||
     voices[0];
@@ -42,6 +43,7 @@ function loadAndSelectVoice() {
   voicesLoaded = true;
   console.log("🎤 Voz selecionada:", selectedVoice.name);
 }
+
 
 /* iOS precisa de interação */
 window.addEventListener("click", () => {
@@ -91,6 +93,7 @@ if ("webkitSpeechRecognition" in window) {
 function speak(textEn, textPt = null) {
   if (!textEn || !selectedVoice) return;
 
+  // 🎤 FALA SEMPRE EM INGLÊS
   const utter = new SpeechSynthesisUtterance(textEn);
   utter.lang = "en-US";
   utter.voice = selectedVoice;
@@ -113,11 +116,12 @@ function speak(textEn, textPt = null) {
     videoIdle.classList.remove("hidden");
   };
 
+  // 📄 LEGENDA CONTROLADA PELO USUÁRIO
   const langSelect = document.getElementById("language-select");
-  const lang = langSelect ? langSelect.value : "en";
+  const selectedLang = langSelect?.value || "en";
 
   statusDiv.textContent =
-    lang === "pt" && textPt ? textPt : textEn;
+    selectedLang === "pt" && textPt ? textPt : textEn;
 
   synth.cancel();
   synth.speak(utter);
