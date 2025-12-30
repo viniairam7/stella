@@ -112,12 +112,33 @@ async function translateToPT(text) {
 /* ================================
    FALAR (INGLÊS) + LEGENDA (EN/PT)
 ================================ */
+const subtitleEN = document.getElementById("subtitle-en");
+const subtitlePT = document.getElementById("subtitle-pt");
+
+async function translateToPT(text) {
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+        text
+      )}&langpair=en|pt`
+    );
+    const data = await res.json();
+    return data.responseData.translatedText;
+  } catch {
+    return "";
+  }
+}
+
 async function speak(textEn) {
   if (!textEn || !selectedVoice) return;
 
+  // 🎤 fala SOMENTE em inglês
   const utter = new SpeechSynthesisUtterance(textEn);
   utter.lang = "en-US";
   utter.voice = selectedVoice;
+  utter.rate = 0.95;
+  utter.pitch = 1;
+  utter.volume = 1;
 
   utter.onstart = () => {
     videoIdle.classList.add("hidden");
@@ -132,20 +153,11 @@ async function speak(textEn) {
     videoIdle.classList.remove("hidden");
   };
 
-  utter.onerror = () => {
-    videoSpeaking.classList.add("hidden");
-    videoIdle.classList.remove("hidden");
-  };
+  // 📄 legendas inteiras
+  subtitleEN.textContent = textEn;
+  subtitlePT.textContent = "Translating...";
 
-  // legenda inteira
-  const langSelect = document.getElementById("language-select");
-  const selectedLang = langSelect?.value || "en";
-
-  if (selectedLang === "pt") {
-    statusDiv.textContent = await translateToPT(textEn);
-  } else {
-    statusDiv.textContent = textEn;
-  }
+  subtitlePT.textContent = await translateToPT(textEn);
 
   synth.cancel();
   synth.speak(utter);
