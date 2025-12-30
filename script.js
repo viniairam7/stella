@@ -1,126 +1,65 @@
 /* ================================
-   ELEMENTOS DA INTERFACE
+   ELEMENTOS DO DOM
 ================================ */
-const startBtn = document.getElementById("start-button");
-const statusDiv = document.getElementById("status");
+const micBtn = document.getElementById("mic-btn");
+const stopBtn = document.getElementById("stop-btn");
 
-const attachPhotoButton = document.getElementById("attach-photo-button");
-const endCallButton = document.getElementById("end-call-button");
-const fileUpload = document.getElementById("file-upload");
+const subtitleEN = document.getElementById("subtitle-en");
+const subtitlePT = document.getElementById("subtitle-pt");
 
 const videoIdle = document.getElementById("videoIdle");
 const videoSpeaking = document.getElementById("videoSpeaking");
 
 /* ================================
-   SPEECH SYNTHESIS
+   FUNÇÃO SAFE (ANTI-NULL)
+================================ */
+function safeText(el, text) {
+  if (el) el.textContent = text;
+}
+
+/* ================================
+   SPEECH SYNTHESIS (VOZ)
 ================================ */
 const synth = window.speechSynthesis;
-let selectedVoice = null;
-let voicesLoaded = false;
-let firstMicClick = true;
+let voices = [];
 
-/* ================================
-   SPEECH RECOGNITION
-================================ */
-let recognition;
+// carregar vozes (necessário para mobile / iOS)
+function loadVoices() {
+  voices = synth.getVoices();
+}
+loadVoices();
 
-/* ================================
-   VOZ – DESKTOP + MOBILE SAFE
-================================ */
-function loadAndSelectVoice() {
-  const voices = synth.getVoices();
-  if (!voices.length) return;
-
-  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-
-  if (!isMobile) {
-    selectedVoice =
-      voices.find(v => v.name.toLowerCase().includes("natural")) ||
-      voices.find(v => v.name.toLowerCase().includes("neural")) ||
-      voices.find(v => v.name.includes("Google")) ||
-      voices.find(v => v.lang === "en-US");
-  } else {
-    // mobile: melhor possível dentro da limitação
-    selectedVoice = voices.find(v => v.lang === "en-US") || voices[0];
-  }
-
-  voicesLoaded = true;
-  console.log("🎤 Voz selecionada:", selectedVoice?.name);
+if (speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-/* iOS precisa de interação */
-window.addEventListener(
-  "click",
-  () => {
-    if (!voicesLoaded) {
-      synth.getVoices();
-      loadAndSelectVoice();
-    }
-  },
-  { once: true }
-);
+// melhor voz possível SEM API externa
+function getBestEnglishVoice() {
+  if (!voices.length) return null;
 
-speechSynthesis.onvoiceschanged = loadAndSelectVoice;
-
-/* ================================
-   SPEECH RECOGNITION SETUP
-================================ */
-if ("webkitSpeechRecognition" in window) {
-  recognition = new webkitSpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onstart = () => {
-    statusDiv.textContent = "🎧 Stella is listening...";
-  };
-
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    statusDiv.textContent = `🗣️ You said: ${transcript}`;
-    sendToStella(transcript);
-  };
-
-  recognition.onerror = () => {
-    statusDiv.textContent = "❌ Microphone error. Try again.";
-  };
-
-  recognition.onend = () => {
-    statusDiv.textContent = "⏹️ Waiting for answer...";
-  };
-} else {
-  alert("Speech recognition not supported.");
+  return (
+    voices.find(v =>
+      v.lang.startsWith("en") &&
+      (
+        v.name.includes("Google US") ||
+        v.name.includes("Samantha") || // iOS
+        v.name.includes("Karen") ||
+        v.name.includes("Daniel") ||
+        v.name.includes("English")
+      )
+    ) ||
+    voices.find(v => v.lang.startsWith("en")) ||
+    voices[0]
+  );
 }
 
 /* ================================
-   TRADUÇÃO SOMENTE DA LEGENDA
+   TRADUÇÃO (LEGENDA PT)
 ================================ */
 async function translateToPT(text) {
   try {
     const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-        text
-      )}&langpair=en|pt`
-    );
-    const data = await res.json();
-    return data.responseData.translatedText;
-  } catch {
-    return text;
-  }
-}
-
-/* ================================
-   FALAR (INGLÊS) + LEGENDA (EN/PT)
-================================ */
-const subtitleEN = document.getElementById("subtitle-en");
-const subtitlePT = document.getElementById("subtitle-pt");
-
-async function translateToPT(text) {
-  try {
-    const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-        text
-      )}&langpair=en|pt`
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|pt`
     );
     const data = await res.json();
     return data.responseData.translatedText;
@@ -129,80 +68,91 @@ async function translateToPT(text) {
   }
 }
 
-async function speak(textEn) {
-  if (!textEn || !selectedVoice) return;
+/* ================================
+   FALAR (INGLÊS) + LEGENDA (EN/PT)
+================================ */
+async function speak(textEN) {
+  if (!textEN) return;
 
-  // 🎤 fala SOMENTE em inglês
-  const utter = new SpeechSynthesisUtterance(textEn);
+  synth.cancel();
+
+  const utter = new SpeechSynthesisUtterance(textEN);
+  const voice = getBestEnglishVoice();
+
+  if (voice) utter.voice = voice;
+
   utter.lang = "en-US";
-  utter.voice = selectedVoice;
-  utter.rate = 0.95;
-  utter.pitch = 1;
+  utter.rate = 0.95;   // natural
+  utter.pitch = 1.05; // mais humano
   utter.volume = 1;
 
   utter.onstart = () => {
-    videoIdle.classList.add("hidden");
-    videoSpeaking.classList.remove("hidden");
-    videoSpeaking.currentTime = 0;
-    videoSpeaking.play();
+    videoIdle?.classList.add("hidden");
+    videoSpeaking?.classList.remove("hidden");
+    if (videoSpeaking) {
+      videoSpeaking.currentTime = 0;
+      videoSpeaking.play();
+    }
   };
 
   utter.onend = () => {
-    videoSpeaking.pause();
-    videoSpeaking.classList.add("hidden");
-    videoIdle.classList.remove("hidden");
+    videoSpeaking?.pause();
+    videoSpeaking?.classList.add("hidden");
+    videoIdle?.classList.remove("hidden");
   };
 
-  // 📄 legendas inteiras
-  subtitleEN.textContent = textEn;
-  subtitlePT.textContent = "Translating...";
+  safeText(subtitleEN, textEN);
+  safeText(subtitlePT, "Translating...");
 
-  subtitlePT.textContent = await translateToPT(textEn);
+  const pt = await translateToPT(textEN);
+  safeText(subtitlePT, pt);
 
-  synth.cancel();
   synth.speak(utter);
 }
 
 /* ================================
-   BOTÃO MICROFONE
+   SPEECH RECOGNITION
 ================================ */
-startBtn.onclick = () => {
-  if (!voicesLoaded) {
-    loadAndSelectVoice();
-    statusDiv.textContent = "Loading voice...";
-    return;
-  }
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if (firstMicClick) {
-    speak("Hello! How can I help you today?");
-    firstMicClick = false;
-    setTimeout(() => recognition.start(), 1200);
-  } else {
-    recognition.start();
-  }
+if (!SpeechRecognition) {
+  alert("Speech recognition not supported in this browser.");
+}
+
+const recognition = new SpeechRecognition();
+recognition.lang = "en-US";
+recognition.continuous = false;
+recognition.interimResults = false;
+
+/* ================================
+   EVENTOS DE VOZ
+================================ */
+recognition.onstart = () => {
+  safeText(subtitleEN, "Listening...");
+  safeText(subtitlePT, "Ouvindo...");
+};
+
+recognition.onresult = (event) => {
+  const userText = event.results[0][0].transcript;
+  safeText(subtitleEN, userText);
+  safeText(subtitlePT, "Processing...");
+  sendToStella(userText);
+};
+
+recognition.onerror = () => {
+  safeText(subtitleEN, "Tap the microphone and try again.");
+  safeText(subtitlePT, "Toque no microfone e tente novamente.");
+};
+
+recognition.onend = () => {
+  // evita bugs — não faz nada
 };
 
 /* ================================
-   ENCERRAR
-================================ */
-endCallButton.onclick = () => {
-  recognition?.stop();
-  synth.cancel();
-
-  videoSpeaking.pause();
-  videoSpeaking.classList.add("hidden");
-  videoIdle.classList.remove("hidden");
-
-  statusDiv.textContent = "Session ended. Touch to talk!";
-  firstMicClick = true;
-};
-
-/* ================================
-   BACKEND STELLA
+   BACKEND STELLA (REAL)
 ================================ */
 function sendToStella(question) {
-  statusDiv.textContent = "✨ Stella is thinking...";
-
   fetch("https://stella-7.onrender.com/perguntar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -218,7 +168,21 @@ function sendToStella(question) {
 }
 
 /* ================================
-   INIT
+   BOTÕES
 ================================ */
-loadAndSelectVoice();
+if (micBtn) {
+  micBtn.onclick = () => {
+    synth.cancel();
+    recognition.start();
+  };
+}
+
+if (stopBtn) {
+  stopBtn.onclick = () => {
+    recognition.stop();
+    synth.cancel();
+    safeText(subtitleEN, "Session ended.");
+    safeText(subtitlePT, "Sessão encerrada.");
+  };
+}
 
