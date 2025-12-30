@@ -1,6 +1,8 @@
 /* ================================
    ELEMENTOS DO DOM
 ================================ */
+let audioUnlocked = false;
+
 const micBtn = document.getElementById("mic-btn");
 const stopBtn = document.getElementById("stop-btn");
 
@@ -110,6 +112,22 @@ async function speak(textEN) {
   synth.speak(utter);
 }
 
+function unlockAudio() {
+  if (audioUnlocked) return;
+
+  const utter = new SpeechSynthesisUtterance(" ");
+  const voice = getBestEnglishVoice();
+  if (voice) utter.voice = voice;
+  utter.lang = "en-US";
+  utter.volume = 0;
+
+  synth.speak(utter);
+  audioUnlocked = true;
+
+  console.log("🔓 Audio unlocked for mobile");
+}
+
+
 /* ================================
    SPEECH RECOGNITION
 ================================ */
@@ -172,6 +190,7 @@ function sendToStella(question) {
 ================================ */
 if (micBtn) {
   micBtn.onclick = () => {
+    unlockAudio();
     synth.cancel();
     recognition.start();
   };
