@@ -1,6 +1,3 @@
-/* ================================
-   ELEMENTOS DO DOM
-================================ */
 let audioUnlocked = false;
 
 const micBtn = document.getElementById("mic-btn");
@@ -12,51 +9,40 @@ const subtitlePT = document.getElementById("subtitle-pt");
 const videoIdle = document.getElementById("videoIdle");
 const videoSpeaking = document.getElementById("videoSpeaking");
 
-/* ================================
-   FUNÇÃO SAFE (ANTI-NULL)
-================================ */
 function safeText(el, text) {
   if (el) el.textContent = text;
 }
 
-/* ================================
-   SPEECH SYNTHESIS (VOZ)
-================================ */
 const synth = window.speechSynthesis;
 let voices = [];
 
-// carregar vozes (necessário para mobile / iOS)
 function loadVoices() {
   voices = synth.getVoices();
 }
-loadVoices();
 
+loadVoices();
 if (speechSynthesis.onvoiceschanged !== undefined) {
   speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-// melhor voz possível SEM API externa
 function getFemaleEnglishVoice() {
-  const voices = speechSynthesis.getVoices();
-
-  return voices.find(v =>
-    v.lang.startsWith("en") &&
-    (
-      v.name.toLowerCase().includes("female") ||
-      v.name.toLowerCase().includes("woman") ||
-      v.name.toLowerCase().includes("samantha") || // iOS
-      v.name.toLowerCase().includes("zira") ||     // Windows
-      v.name.toLowerCase().includes("google us english")
-    )
+  return (
+    voices.find(v =>
+      v.lang.startsWith("en") &&
+      (
+        v.name.toLowerCase().includes("female") ||
+        v.name.toLowerCase().includes("woman") ||
+        v.name.toLowerCase().includes("samantha") ||
+        v.name.toLowerCase().includes("zira") ||
+        v.name.toLowerCase().includes("google us")
+      )
     ) ||
     voices.find(v => v.lang.startsWith("en")) ||
-    voices[0]
+    voices[0] ||
+    null
   );
+}
 
-
-/* ================================
-   TRADUÇÃO (LEGENDA PT)
-================================ */
 async function translateToPT(text) {
   try {
     const res = await fetch(
@@ -69,37 +55,37 @@ async function translateToPT(text) {
   }
 }
 
-/* ================================
-   FALAR (INGLÊS) + LEGENDA (EN/PT)
-================================ */
 async function speak(textEN) {
   if (!textEN) return;
 
   synth.cancel();
 
-  const utter = new SpeechSynthesisUtterance(textEN);
-  const voice = getBestEnglishVoice();
+  const utterance = new SpeechSynthesisUtterance(textEN);
+  const voice = getFemaleEnglishVoice();
 
-  if (voice) utter.voice = voice;
+  if (voice) utterance.voice = voice;
 
-  utter.lang = "en-US";
-  utter.rate = 0.95;   // natural
-  utter.pitch = 1.05; // mais humano
-  utter.volume = 1;
+  utterance.lang = "en-US";
+  utterance.rate = 0.95;
+  utterance.pitch = 1.05;
+  utterance.volume = 1;
 
-   
-utterance.onstart = () => {
-  videoIdle.classList.add("hidden");
-  videoSpeaking.classList.remove("hidden");
-  videoSpeaking.play().catch(() => {});
-};
+  utterance.onstart = () => {
+    if (videoIdle && videoSpeaking) {
+      videoIdle.classList.add("hidden");
+      videoSpeaking.classList.remove("hidden");
+      videoSpeaking.currentTime = 0;
+      videoSpeaking.play().catch(() => {});
+    }
+  };
 
-utterance.onend = () => {
-  videoSpeaking.classList.add("hidden");
-  videoIdle.classList.remove("hidden");
-  videoIdle.play().catch(() => {});
-};
-
+  utterance.onend = () => {
+    if (videoIdle && videoSpeaking) {
+      videoSpeaking.classList.add("hidden");
+      videoIdle.classList.remove("hidden");
+      videoIdle.play().catch(() => {});
+    }
+  };
 
   safeText(subtitleEN, textEN);
   safeText(subtitlePT, "Translating...");
@@ -107,28 +93,24 @@ utterance.onend = () => {
   const pt = await translateToPT(textEN);
   safeText(subtitlePT, pt);
 
-  synth.speak(utter);
+  synth.speak(utterance);
 }
 
 function unlockAudio() {
   if (audioUnlocked) return;
 
-  const utter = new SpeechSynthesisUtterance(" ");
-  const voice = getBestEnglishVoice();
-  if (voice) utter.voice = voice;
-  utter.lang = "en-US";
-  utter.volume = 0;
+  const utterance = new SpeechSynthesisUtterance(" ");
+  const voice = getFemaleEnglishVoice();
 
-  synth.speak(utter);
+  if (voice) utterance.voice = voice;
+
+  utterance.lang = "en-US";
+  utterance.volume = 0;
+
+  synth.speak(utterance);
   audioUnlocked = true;
-
-  console.log("🔓 Audio unlocked for mobile");
 }
 
-
-/* ================================
-   SPEECH RECOGNITION
-================================ */
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -141,9 +123,6 @@ recognition.lang = "en-US";
 recognition.continuous = false;
 recognition.interimResults = false;
 
-/* ================================
-   EVENTOS DE VOZ
-================================ */
 recognition.onstart = () => {
   safeText(subtitleEN, "Listening...");
   safeText(subtitlePT, "Ouvindo...");
@@ -161,13 +140,6 @@ recognition.onerror = () => {
   safeText(subtitlePT, "Toque no microfone e tente novamente.");
 };
 
-recognition.onend = () => {
-  // evita bugs — não faz nada
-};
-
-/* ================================
-   BACKEND STELLA (REAL)
-================================ */
 function sendToStella(question) {
   fetch("https://stella-7.onrender.com/perguntar", {
     method: "POST",
@@ -183,9 +155,6 @@ function sendToStella(question) {
     });
 }
 
-/* ================================
-   BOTÕES
-================================ */
 if (micBtn) {
   micBtn.onclick = () => {
     unlockAudio();
@@ -202,4 +171,3 @@ if (stopBtn) {
     safeText(subtitlePT, "Sessão encerrada.");
   };
 }
-
