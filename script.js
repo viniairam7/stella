@@ -36,19 +36,18 @@ if (speechSynthesis.onvoiceschanged !== undefined) {
 }
 
 // melhor voz possível SEM API externa
-function getBestEnglishVoice() {
-  if (!voices.length) return null;
+function getFemaleEnglishVoice() {
+  const voices = speechSynthesis.getVoices();
 
-  return (
-    voices.find(v =>
-      v.lang.startsWith("en") &&
-      (
-        v.name.includes("Google US") ||
-        v.name.includes("Samantha") || // iOS
-        v.name.includes("Karen") ||
-        v.name.includes("Daniel") ||
-        v.name.includes("English")
-      )
+  return voices.find(v =>
+    v.lang.startsWith("en") &&
+    (
+      v.name.toLowerCase().includes("female") ||
+      v.name.toLowerCase().includes("woman") ||
+      v.name.toLowerCase().includes("samantha") || // iOS
+      v.name.toLowerCase().includes("zira") ||     // Windows
+      v.name.toLowerCase().includes("google us english")
+    )
     ) ||
     voices.find(v => v.lang.startsWith("en")) ||
     voices[0]
@@ -88,20 +87,19 @@ async function speak(textEN) {
   utter.pitch = 1.05; // mais humano
   utter.volume = 1;
 
-  utter.onstart = () => {
-    videoIdle?.classList.add("hidden");
-    videoSpeaking?.classList.remove("hidden");
-    if (videoSpeaking) {
-      videoSpeaking.currentTime = 0;
-      videoSpeaking.play();
-    }
-  };
+   
+utterance.onstart = () => {
+  videoIdle.classList.add("hidden");
+  videoSpeaking.classList.remove("hidden");
+  videoSpeaking.play().catch(() => {});
+};
 
-  utter.onend = () => {
-    videoSpeaking?.pause();
-    videoSpeaking?.classList.add("hidden");
-    videoIdle?.classList.remove("hidden");
-  };
+utterance.onend = () => {
+  videoSpeaking.classList.add("hidden");
+  videoIdle.classList.remove("hidden");
+  videoIdle.play().catch(() => {});
+};
+
 
   safeText(subtitleEN, textEN);
   safeText(subtitlePT, "Translating...");
