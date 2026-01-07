@@ -52,7 +52,7 @@ function getFemaleEnglishVoice() {
     voices.find(v => v.lang.startsWith("en")) ||
     voices[0]
   );
-}
+
 
 /* ================================
    TRADUÇÃO (LEGENDA PT)
